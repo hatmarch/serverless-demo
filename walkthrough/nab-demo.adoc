@@ -247,8 +247,18 @@ Explain that this is no longer necessary because instead the event will trigger 
 
 === Recompile the payment service
 
+[WARNING]
+.Resource Requirements for Docker Quarkus Build
+====
+If you are running linux in a container, you need to make sure the docker daemon has enough memory assigned to it.  This configuration seemed to be enough to build the payment-service
+
+image:docker-requirement.png[]
+====
+
+
 ----
 cd payment-service
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
 mvn clean package -Pnative -DskipTests
 ----
 
@@ -266,3 +276,14 @@ oc start-build payment --from-file target/*-runner --follow
 
 === Create a Knative service
 
+In order to create the Knative service, we need to know which image needs to be spun up to handle, in this case, order events.  To find the image go to *Builds > Image Streams* on the left menu then input payment to show the payment imagestream. Click on payment imagestream:
+
+image:find-image.png[]
+
+image:image-repository.png[]
+
+In the Overview tab, copy the IMAGE REPOSITORY value shown and then open the *payment-service/knative/knative-serving-service.yaml* file and update the image: line with this value.
+
+<FINISH>
+
+=== Create Knative event to kickoff service

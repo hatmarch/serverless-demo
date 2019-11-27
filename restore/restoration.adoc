@@ -1,7 +1,7 @@
 = Demo Reset and Restoration
 
 == Code
-* revert back to prior-to-serverless branch
+* revert back to *prior-to-serverless-convert* branch start
 
 == Payment Service
 * Run all the yaml files in the payment directory to restore this 
