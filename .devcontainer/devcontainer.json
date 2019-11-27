@@ -3,9 +3,10 @@
 	"dockerFile": "Dockerfile",
 	"extensions": [
 		"vscjava.vscode-java-pack",
-		"redhat.vscode-xml"
+		"redhat.vscode-xml",
+		"joaompinto.asciidoctor-vscode"
 	],
 	"settings":{
-		"java.home": "/docker-java-home"
+		"java.home": "/usr/lib/jvm/java-1.8.0-openjdk"
 	}
 }
