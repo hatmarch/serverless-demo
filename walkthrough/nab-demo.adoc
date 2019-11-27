@@ -1,0 +1,231 @@
+= NAB Serverless Demo
+:imagesdir: images
+
+[IMPORTANT]
+.Setting up the Demo
+====
+
+Run the folloing commands in a shell
+----
+git clone https://github.com/hatmarch/cloud-native-workshop-v2m4-labs.git -b prior-to-serverless-convert
+cd cloud-native-workshop-v2m4
+export DEMO_HOME=$(pwd)
+
+# ensure we have access to the stack that can build the app for .devcontainer
+docker login registry.redhat.io
+code .
+----
+
+TODO: Install Operators (Kafka)
+
+Apply the template
+----
+oc apply -f $DEMO_HOME/install/cool-store-pre-serverless.yaml
+----
+
+Updates after template 
+----
+oc project user1-cloudnativeapps
+$DEMO_HOME/install/template-fix.sh
+----
+
+Build Every Project
+
+----
+cd inventory-service/
+mvn clean package -DskipTests
+    * Deploy with:
+oc start-build inventory --from-file target/*-runner.jar --follow
+* Order Service
+export MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -DskipTests
+    * deploy with
+oc start-build order --from-file target/*-runner.jar --follow
+* Catalog service
+cd catalog-service/
+mvn clean package spring-boot:repackage -DskipTests
+    * Deploy with
+oc start-build catalog --from-file=target/catalog-1.0.0-SNAPSHOT.jar --follow
+* Cart service
+export MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -DskipTests
+    * Deploy with
+oc start-build cart --from-file target/*-runner.jar --follow
+* Payment service (initial)
+export MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -DskipTests
+    * deploy with
+oc start-build payment --from-file target/*-runner.jar --follow
+* Coolstore: build with
+npm install --save-dev nodeshift
+npm run nodeshift
+----
+
+Install all required operators (see also Kamesh's guide link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/01-setup.html#download-tutorial-sources[here])
+
+----
+oc adm new-project istio-system && \
+oc adm new-project knative-serving && \
+oc adm new-project knative-eventing && \
+oc adm new-project knativetutorial
+
+oc apply -f "$TUTORIAL_HOME/install/redhat-operators-csc.yaml" \
+  -f "$TUTORIAL_HOME/install/community-operators-csc.yaml"
+
+oc -n openshift-marketplace get csc
+----
+
+A successful reconciliation should show an output like:
+
+----
+NAME                           STATUS      MESSAGE                                       AGE
+community-operators-packages   Succeeded   The object has been successfully reconciled   62s
+redhat-operators-packages      Succeeded   The object has been successfully reconciled   62s
+----
+
+Open a new terminal and start a watch on the command oc get csv -n openshift-operators. For further reference in the setup we will call this terminal as WATCH_WINDOW.
+
+----
+watch 'oc get csv -n openshift-operators -ocustom-columns-file=$TUTORIAL_HOME/install/csv-columns.txt'
+----
+
+Subscribe to Service Mesh
+
+----
+oc apply -f "$TUTORIAL_HOME/install/servicemesh/subscription.yaml"
+----
+
+A successful servicemesh subscription install should show the output in WATCH_WINDOW like:
+
+----
+NAME                                         VERSION               PHASE
+elasticsearch-operator.4.1.20-201910102034   4.1.20-201910102034   Succeeded
+jaeger-operator.v1.13.1                      1.13.1                Succeeded
+kiali-operator.v1.0.6                        1.0.6                 Succeeded
+servicemeshoperator.v1.0.1                   1.0.1                 Succeeded
+----
+
+The servicemesh operator needs to be copied to the istio-system project before we can create a ServiceMeshControlPlane and ServiceMeshMemberRoll custom resources, you can watch the status using the command:
+
+----
+watch 'oc get csv -n istio-system -ocustom-columns-file=$TUTORIAL_HOME/install/csv-columns.txt'
+
+
+----
+
+Now start up the service mesh
+
+----
+oc create -f "$TUTORIAL_HOME/install/servicemesh/smcp.yaml" && \
+oc create -f "$TUTORIAL_HOME/install/servicemesh/smmr.yaml"
+----
+
+It will take few minutes for the servicemesh components to be installed, you can watch the status using the command:
+
+----
+oc get pods -n istio-system -w
+----
+
+A successful servicemesh install should show the following pods:
+
+----
+NAME                                     READY   STATUS    RESTARTS   AGE
+cluster-local-gateway-7795cc7956-mqmq7   1/1     Running   0          92s
+istio-citadel-f88bdd688-c52z8            1/1     Running   0          2m58s
+istio-galley-f8f96c6bf-x7f4k             1/1     Running   0          2m48s
+istio-ingressgateway-65bf84457c-7rh5t    1/1     Running   0          92s
+istio-pilot-7f57f8bb5b-cr2qr             1/1     Running   0          110s
+----
+
+Install knative serving.  First subscribe
+
+----
+oc apply -f "$TUTORIAL_HOME/install/knative-serving/subscription.yaml"
+----
+
+Then configure
+
+----
+oc apply -f "$TUTORIAL_HOME/install/knative-serving/cr.yaml"
+
+oc get pods -n knative-serving -w
+----
+
+A successful serverless install will show the following pods in knative-serving namespace:
+
+----
+NAME                                    READY   STATUS    RESTARTS   AGE
+activator-78464cc84-vq9wp               1/1     Running   1          103s
+autoscaler-57479674d6-hlvx7             1/1     Running   0          102s
+controller-6fcb5b4b78-flq8d             1/1     Running   0          97s
+networking-certmanager-8c6d68d4-cmf7x   1/1     Running   0          97s
+networking-istio-644984496f-db58w       1/1     Running   0          96s
+webhook-84b96fdc6f-vbpxm                1/1     Running   1          96s
+----
+
+Install Knative Eventing
+
+----
+oc apply -f "$TUTORIAL_HOME/install/knative-eventing/subscription.yaml"
+----
+
+Wait for the subscription PHASE to be Installed before proceeding to next step. You can watch the status in the WATCH_WINDOW.
+
+A successful knative eventing subscription install should show the output in WATCH_WINDOW like:
+
+----
+NAME                                         VERSION               PHASE
+elasticsearch-operator.4.1.20-201910102034   4.1.20-201910102034   Succeeded
+jaeger-operator.v1.13.1                      1.13.1                Succeeded
+kiali-operator.v1.0.6                        1.0.6                 Succeeded
+knative-eventing-operator.v0.8.0             0.8.0                 Succeeded
+serverless-operator.v1.0.0                   1.0.0                 Succeeded
+servicemeshoperator.v1.0.1                   1.0.1                 Succeeded
+----
+
+The knative-eventing operator needs to be copied to the knative-eventing project before we can create a KnativeEventing custom resource, you can watch the status using the command:
+
+----
+watch 'oc get csv -n knative-eventing -ocustom-columns-file=$TUTORIAL_HOME/install/csv-columns.txt'
+----
+
+====
+
+== Context
+image::coolstore-initial-ui.png[]
+
+== Converting the Payment Service
+
+=== Remove direct Knative integration code
+
+Currently our Payment service directly binds to Kafka to listen for events. Now that we have Knative eventing integration, we no longer need this code. CMD+p to navigate to the *PaymentResource.java* file 
+
+Delete (or comment out) the onMessage() method:
+
+image:onMessage.png[]
+
+And delete the configuration for the incoming stream. In *application.properties* , delete (or comment out) the following lines for the Incoming stream:
+
+image:payment-app-properties.png[]
+
+=== Recompile the payment service
+
+----
+cd payment-service
+mvn clean package -Pnative -DskipTests
+----
+
+While that's compiling, in another VSCode terminal, update our builder to be able to build native quarkus
+
+----
+oc new-build quay.io/quarkus/ubi-quarkus-native-binary-s2i:19.2.0 --binary --name=payment -l app=payment
+----
+
+Once the native maven build is done, we can start a build using our new configuration
+
+----
+oc start-build payment --from-file target/*-runner --follow
+----
+
+=== Create a Knative service
+
