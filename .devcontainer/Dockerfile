@@ -1,0 +1,1 @@
+FROM registry.redhat.io/codeready-workspaces/stacks-java-rhel8
