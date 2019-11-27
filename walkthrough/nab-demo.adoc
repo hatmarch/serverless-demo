@@ -69,8 +69,8 @@ oc adm new-project knative-serving && \
 oc adm new-project knative-eventing && \
 oc adm new-project knativetutorial
 
-oc apply -f "$TUTORIAL_HOME/install/redhat-operators-csc.yaml" \
-  -f "$TUTORIAL_HOME/install/community-operators-csc.yaml"
+oc apply -f "$DEMO_HOME/install/redhat-operators-csc.yaml" \
+  -f "$DEMO_HOME/install/community-operators-csc.yaml"
 
 oc -n openshift-marketplace get csc
 ----
@@ -86,13 +86,13 @@ redhat-operators-packages      Succeeded   The object has been successfully reco
 Open a new terminal and start a watch on the command oc get csv -n openshift-operators. For further reference in the setup we will call this terminal as WATCH_WINDOW.
 
 ----
-watch 'oc get csv -n openshift-operators -ocustom-columns-file=$TUTORIAL_HOME/install/csv-columns.txt'
+watch 'oc get csv -n openshift-operators -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
 ----
 
 Subscribe to Service Mesh
 
 ----
-oc apply -f "$TUTORIAL_HOME/install/servicemesh/subscription.yaml"
+oc apply -f "$DEMO_HOME/install/servicemesh/subscription.yaml"
 ----
 
 A successful servicemesh subscription install should show the output in WATCH_WINDOW like:
@@ -108,7 +108,7 @@ servicemeshoperator.v1.0.1                   1.0.1                 Succeeded
 The servicemesh operator needs to be copied to the istio-system project before we can create a ServiceMeshControlPlane and ServiceMeshMemberRoll custom resources, you can watch the status using the command:
 
 ----
-watch 'oc get csv -n istio-system -ocustom-columns-file=$TUTORIAL_HOME/install/csv-columns.txt'
+watch 'oc get csv -n istio-system -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
 
 
 ----
@@ -116,8 +116,8 @@ watch 'oc get csv -n istio-system -ocustom-columns-file=$TUTORIAL_HOME/install/c
 Now start up the service mesh
 
 ----
-oc create -f "$TUTORIAL_HOME/install/servicemesh/smcp.yaml" && \
-oc create -f "$TUTORIAL_HOME/install/servicemesh/smmr.yaml"
+oc create -f "$DEMO_HOME/install/servicemesh/smcp.yaml" && \
+oc create -f "$DEMO_HOME/install/servicemesh/smmr.yaml"
 ----
 
 It will take few minutes for the servicemesh components to be installed, you can watch the status using the command:
@@ -140,13 +140,13 @@ istio-pilot-7f57f8bb5b-cr2qr             1/1     Running   0          110s
 Install knative serving.  First subscribe
 
 ----
-oc apply -f "$TUTORIAL_HOME/install/knative-serving/subscription.yaml"
+oc apply -f "$DEMO_HOME/install/knative-serving/subscription.yaml"
 ----
 
 Then configure
 
 ----
-oc apply -f "$TUTORIAL_HOME/install/knative-serving/cr.yaml"
+oc apply -f "$DEMO_HOME/install/knative-serving/cr.yaml"
 
 oc get pods -n knative-serving -w
 ----
@@ -166,7 +166,7 @@ webhook-84b96fdc6f-vbpxm                1/1     Running   1          96s
 Install Knative Eventing
 
 ----
-oc apply -f "$TUTORIAL_HOME/install/knative-eventing/subscription.yaml"
+oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
 ----
 
 Wait for the subscription PHASE to be Installed before proceeding to next step. You can watch the status in the WATCH_WINDOW.
@@ -186,15 +186,50 @@ servicemeshoperator.v1.0.1                   1.0.1                 Succeeded
 The knative-eventing operator needs to be copied to the knative-eventing project before we can create a KnativeEventing custom resource, you can watch the status using the command:
 
 ----
-watch 'oc get csv -n knative-eventing -ocustom-columns-file=$TUTORIAL_HOME/install/csv-columns.txt'
+watch 'oc get csv -n knative-eventing -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
 ----
 
 ====
+
+
 
 == Context
 image::coolstore-initial-ui.png[]
 
 == Converting the Payment Service
+
+Demonstrate the app working.  By going to the store.  You can find the URL like this:
+----
+oc get route coolstore-ui -n user1-cloudnativeapps
+----
+
+image:add-to-cart.png[]
+
+From the cart, checkout and then enter credit card details (any 16-digit number beginning with 4 will work)
+
+image:checkout.png[]
+
+Now navigate to the orders page.  Notice that the order gets processed after about 5 seconds (you may need to refresh page to see this)
+
+image:orders[]
+
+=== Remove the old payment service
+
+We need to remove our old microservice way of running the payment service.  For that we will delete build configs and existing deployments
+
+IMPORTANT: Make sure you are logged into the console before starting down this path!
+
+----
+oc project user1-cloudnativeapps
+oc delete bc/payment
+oc delete dc/payment route/payment svc/payment
+----
+
+Navigate to the coolstore ui
+
+Demonstrate that purchases can be made (as before), but orders are now not processed
+
+image:no-payment-processing.png[]
 
 === Remove direct Knative integration code
 
@@ -207,6 +242,8 @@ image:onMessage.png[]
 And delete the configuration for the incoming stream. In *application.properties* , delete (or comment out) the following lines for the Incoming stream:
 
 image:payment-app-properties.png[]
+
+Explain that this is no longer necessary because instead the event will trigger the starting of a container with the event as the incoming context.
 
 === Recompile the payment service
 
