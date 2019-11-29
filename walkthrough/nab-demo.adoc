@@ -274,16 +274,27 @@ Once the native maven build is done, we can start a build using our new configur
 oc start-build payment --from-file target/*-runner --follow
 ----
 
-=== Create a Knative service
+=== Create a Knative service (Knative Serving)
 
 In order to create the Knative service, we need to know which image needs to be spun up to handle, in this case, order events.  To find the image go to *Builds > Image Streams* on the left menu then input payment to show the payment imagestream. Click on payment imagestream:
 
 image:find-image.png[]
 
+In the Overview tab, copy the IMAGE REPOSITORY value shown 
+
 image:image-repository.png[]
 
-In the Overview tab, copy the IMAGE REPOSITORY value shown and then open the *payment-service/knative/knative-serving-service.yaml* file and update the image: line with this value.
+[TIP]
+.You can use the command line to quickly get the image stream
+====
+----
+oc get is payment -o jsonpath="{.status.dockerImageRepository}" -n user1-cloudnativeapps
+----
+====
+Then open the *payment-service/knative/knative-serving-service.yaml* file and paste in that value
 
-<FINISH>
+Then update and update the image: line with this value.
 
-=== Create Knative event to kickoff service
+image:knative-service-edit.png[]
+
+=== Create Knative event to kickoff service (Knative Eventing)

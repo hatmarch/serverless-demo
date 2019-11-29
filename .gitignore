@@ -2,4 +2,4 @@
 .DS_Store
 
 target/
-coolstore-ui/tmp/*
+coolstore-ui/tmp
