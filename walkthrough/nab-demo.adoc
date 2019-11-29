@@ -16,7 +16,30 @@ docker login registry.redhat.io
 code .
 ----
 
-TODO: Install Operators (Kafka)
+* Make sure you have a user1-cloudnativeapps namespace
+----
+oc new-project user1-cloudnativeapps
+----
+
+* Subscribe to the AMQ Streams Operator in the user1-cloudnativeapps namespace
+
+* Install the kafka queues and two topics
+
+----
+oc apply -f $DEMO_HOME/install/kafka/kafka.yaml
+oc apply -f $DEMO_HOME/install/kafka/kafka-order-topic.yaml 
+oc apply -f $DEMO_HOME/install/kafka/kafka-payment-topic.yaml 
+----
+
+Kafka is installed once you see the following pods
+----
+my-cluster-kafka-0                                    2/2     Running     0          94s
+my-cluster-kafka-1                                    2/2     Running     0          94s
+my-cluster-kafka-2                                    2/2     Running     0          94s
+my-cluster-zookeeper-0                                2/2     Running     0          4m13s
+my-cluster-zookeeper-1                                2/2     Running     0          4m13s
+my-cluster-zookeeper-2                                2/2     Running     0          4m12s
+----
 
 Apply the template
 ----
@@ -37,6 +60,7 @@ mvn clean package -DskipTests
     * Deploy with:
 oc start-build inventory --from-file target/*-runner.jar --follow
 * Order Service
+cd order-service
 export MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
 mvn clean package -DskipTests
     * deploy with
@@ -47,16 +71,19 @@ mvn clean package spring-boot:repackage -DskipTests
     * Deploy with
 oc start-build catalog --from-file=target/catalog-1.0.0-SNAPSHOT.jar --follow
 * Cart service
+cd cart-service
 export MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
 mvn clean package -DskipTests
     * Deploy with
 oc start-build cart --from-file target/*-runner.jar --follow
 * Payment service (initial)
+cd payment-service
 export MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
 mvn clean package -DskipTests
     * deploy with
 oc start-build payment --from-file target/*-runner.jar --follow
 * Coolstore: build with
+cd coolstore-ui
 npm install --save-dev nodeshift
 npm run nodeshift
 ----
@@ -64,10 +91,9 @@ npm run nodeshift
 Install all required operators (see also Kamesh's guide link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/01-setup.html#download-tutorial-sources[here])
 
 ----
-oc adm new-project istio-system && \
-oc adm new-project knative-serving && \
-oc adm new-project knative-eventing && \
-oc adm new-project knativetutorial
+oc adm new-project istio-system 
+oc adm new-project knative-serving
+oc adm new-project knative-eventing
 
 oc apply -f "$DEMO_HOME/install/redhat-operators-csc.yaml" \
   -f "$DEMO_HOME/install/community-operators-csc.yaml"
@@ -137,16 +163,30 @@ istio-ingressgateway-65bf84457c-7rh5t    1/1     Running   0          92s
 istio-pilot-7f57f8bb5b-cr2qr             1/1     Running   0          110s
 ----
 
+WARNING: Installing Service Mesh and adding user1-cloudnativeapp to the service mesh might add a network policy that causes the routes to fail.  Delete this network policy to retore routes.
+
 Install knative serving.  First subscribe
 
 ----
-oc apply -f "$DEMO_HOME/install/knative-serving/subscription.yaml"
+oc apply -f "$DEMO_HOME/install/knative-serving/subscription.yaml" 
+oc get csv -n knative-serving -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt
 ----
 
-Then configure
+Successful execution will look like this:
 
 ----
-oc apply -f "$DEMO_HOME/install/knative-serving/cr.yaml"
+NAME                                        VERSION              PHASE
+elasticsearch-operator.4.2.8-201911190952   4.2.8-201911190952   Succeeded
+jaeger-operator.v1.13.1                     1.13.1               Succeeded
+kiali-operator.v1.0.7                       1.0.7                Succeeded
+serverless-operator.v1.2.0                  1.2.0                Succeeded
+servicemeshoperator.v1.0.2                  1.0.2                Succeeded
+----
+
+Only when that's done can you configure knative serving
+
+----
+oc apply -f "$DEMO_HOME/install/knative-serving/cr.yaml" -n knative-serving
 
 oc get pods -n knative-serving -w
 ----
@@ -154,13 +194,13 @@ oc get pods -n knative-serving -w
 A successful serverless install will show the following pods in knative-serving namespace:
 
 ----
-NAME                                    READY   STATUS    RESTARTS   AGE
-activator-78464cc84-vq9wp               1/1     Running   1          103s
-autoscaler-57479674d6-hlvx7             1/1     Running   0          102s
-controller-6fcb5b4b78-flq8d             1/1     Running   0          97s
-networking-certmanager-8c6d68d4-cmf7x   1/1     Running   0          97s
-networking-istio-644984496f-db58w       1/1     Running   0          96s
-webhook-84b96fdc6f-vbpxm                1/1     Running   1          96s
+NAME                                READY   STATUS    RESTARTS   AGE
+activator-dfb5b7b67-hh5kh           1/1     Running   0          79s
+autoscaler-85bb4898c5-5sssb         1/1     Running   0          77s
+autoscaler-hpa-865b6d49b7-7sqns     1/1     Running   0          78s
+controller-65c8dd48d6-5cl9v         1/1     Running   0          73s
+networking-istio-7c9fb7dd4c-lsbdm   1/1     Running   0          73s
+webhook-95969d4fc-t9d4v             1/1     Running   0          72s
 ----
 
 Install Knative Eventing
@@ -169,7 +209,11 @@ Install Knative Eventing
 oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
 ----
 
-Wait for the subscription PHASE to be Installed before proceeding to next step. You can watch the status in the WATCH_WINDOW.
+The knative-eventing operator needs to be copied to the knative-eventing project before we can create a KnativeEventing custom resource, you can watch the status using the command:
+
+----
+watch 'oc get csv -n knative-eventing -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
+----
 
 A successful knative eventing subscription install should show the output in WATCH_WINDOW like:
 
@@ -183,14 +227,19 @@ serverless-operator.v1.0.0                   1.0.0                 Succeeded
 servicemeshoperator.v1.0.1                   1.0.1                 Succeeded
 ----
 
-The knative-eventing operator needs to be copied to the knative-eventing project before we can create a KnativeEventing custom resource, you can watch the status using the command:
+Finally, check that the pods in the knative-serving namespace look like this
 
 ----
-watch 'oc get csv -n knative-eventing -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
+$ oc get pods -n knative-eventing
+NAME                                   READY   STATUS    RESTARTS   AGE
+eventing-controller-5c7c649d4b-gf4v9   1/1     Running   0          7m11s
+eventing-webhook-569c567bd5-wm5mk      1/1     Running   0          7m10s
+imc-controller-7c9898558b-rkhtw        1/1     Running   0          7m4s
+imc-dispatcher-cd5c98964-q94xd         1/1     Running   0          7m4s
+sources-controller-5b86d684fb-252sd    1/1     Running   0          7m10s
 ----
 
 ====
-
 
 
 == Context

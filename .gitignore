@@ -3,3 +3,5 @@
 
 target/
 coolstore-ui/tmp
+
+.vscode
