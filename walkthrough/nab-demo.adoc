@@ -320,6 +320,7 @@ oc new-build quay.io/quarkus/ubi-quarkus-native-binary-s2i:19.2.0 --binary --nam
 Once the native maven build is done, we can start a build using our new configuration
 
 ----
+cd $DEMO_HOME/payment-service
 oc start-build payment --from-file target/*-runner --follow
 ----
 
@@ -346,4 +347,136 @@ Then update and update the image: line with this value.
 
 image:knative-service-edit.png[]
 
+[TIP]
+.To delete a knative service
+====
+Though knative services are reported from oc get svc and oc get rt, you cannot delete them in this way.  Instead you must delete them based on the distinct (knative) descriptor that they have
+
+Here is a command to delete all services (exposed as routes) that have the name that includes 'payment'
+----
+oc delete services.serving.knative.dev $(oc get rt --no-headers | grep -i payment | awk '{print $1}')
+----
+====
+
+==== Invoke the service
+
+You can call the knative service that you just created if it is ready.  Your service is ready if you issue the following command and get the following output
+----
+$ oc get rt
+NAME      URL                                                                           READY   REASON
+payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
+----
+
+Call the service by using the following command
+----
+export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
+curl -i -H 'Content-Type: application/json' -d '{"foo": "bar"}' $SVC_URL
+----
+
+==== Service Autoscaling
+
+NOTE: _The knative-serving attribute scale-to-zero-grace-period is a “dynamic parameter” i.e. any updates to this value are reflected immediately to all its consumers; while all other parameters are static parameters i.e. change to it need a restart of the autoscaler deployment of knative-serving namespace._
+
+TODO: See link:https://knative.dev/docs/serving/samples/autoscale-go/index.html[here]
+
+==== Service Revisions
+
+TODO: See link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/02-basic-fundas.html#deploying-new-revision[here]
+
+==== Service Pinning
+
+TODO: See link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/02-basic-fundas.html#_service_pinned_to_first_revision[here]
+
 === Create Knative event to kickoff service (Knative Eventing)
+
+Now we want to use events the order topic to be our *source* (see also link:https://knative.dev/docs/eventing/samples/kafka/source/index.html[here] for generic example) and use the payment service as our *sink*
+
+First we need to install the Kafka knative event source as seen below.  In user1-cloudnativeapps go to *Operators > Operator Hub* to find it
+
+image:kafka-event-operator.png[]
+
+Then install the operator with the default values (e.g. across whole cluster)
+
+Now we need to create an instance of kakfa eventing for our namespace.  To do this call
+
+----
+$ oc apply -f install/kafka-eventing/kafka-eventing.yaml 
+knativeeventingkafka.eventing.knative.dev/knative-eventing-kafka created
+----
+
+Then wait until all the kafka pods are created.  Use the following watch command and look for output like this
+
+----
+$ watch oc get pods | grep -i ^kafka
+
+----
+
+Then use the yaml file to bind the kafka event source to the payment service sink
+
+----
+oc apply -f $DEMO_HOME/payment-service/knative/kafka-event-source.yaml 
+----
+
+Then check to make source the event source is running
+
+----
+$ oc get pods -l knative-eventing-source-name=kafka-source
+----
+
+Now we want to prepare some windows for our demo.
+
+*Window 1*: Duplicate the tab where you're looking at the user1-cloudnativeapps project.  Then navigate to the *Workloads > Pods* and find the _my-cluster-kafka-0_ pod.  Go then to the Terminal tab.  From there, enter the command as follows (also in image) and click _Expand_ in the upper right corner
+
+image:watch-orders.png[]
+
+----
+bin/kafka-console-consumer.sh --topic orders --bootstrap-server localhost:9092
+----
+
+*Window 2*: Duplicate the tab again and then switch to the *Developer Perspective*.  There will be a lot of pods, so you'll want to filter based on the "focus" application group.  Make sure the knative payment pod is featured prominently.  It should indicate zero pods
+
+image:window2-setup.png[]
+
+
+Then hit the coolstore-ui by *[SHIFT+OPTION] clicking* the launcher icon on the Developer Perspective (see previous) and moving the newly opened window to the right
+
+Recommended arrangement is like this:
+
+image:recommended-layout.png[]
+
+[HINT]
+.If you need to open the window another way...
+====
+You can find the URL by running this command in a terminal
+----
+oc get route -n user1-cloudnativeapps | grep coolstore-ui | awk '{print $2}'
+----
+====
+
+Now puchase something and add it to the cart.  Then Checkout.
+
+Upon checkout you should see the payment pod spinning up to consume the order
+
+image:consuming-kafka-queue.png[]
+
+You can then go to the *Orders* section of the site to show that the order was consumed.  When you return, the pod should be spun down (with a clear or black outline).
+
+If you'd like to play more with spin up and spin down, you can click on the route badge on the topography view to show the pod spinning up and then spinning down.
+
+You can also show how subsequent requests when pod is up continue to be serviced by that pod (subject to the max concurrency number setup in knative-eventing).
+
+== TODO
+
+* Make sure all services are properly annotatted with the "Focus" application group (will have to change yaml)
+** Need to deal with connectors...see how these are done
+** Can't find a way to setup the kafka source to put labels on the resultant pod
+
+* Make sure the reset scripts work appropriately (with the option to keep all operators active)
+
+* Update pre-req to include kafka eventing?
+
+* Script for building all items
+
+* install stern and kn on the .devcontainer
+
+* Prove that the script runs on a brand new cluster

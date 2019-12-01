@@ -12,9 +12,10 @@ spec:
       max-scale-up-rate: '10'
       panic-threshold-percentage: '200.0'
       panic-window: 6s
-      panic-window-percentage: '10.0'
-      scale-to-zero-grace-period: 30s
-      stable-window: 60s
+      # panic-window-percentage must be in [33.333333333333336, 100] or autoscaler will crash
+      panic-window-percentage: '33.34'
+      scale-to-zero-grace-period: 6s
+      stable-window: 10s
       tick-interval: 2s
     defaults:
       revision-cpu-limit: 1000m

@@ -9848,7 +9848,7 @@ items:
     generation: 3
     labels:
       app: cart
-      app.kubernetes.io/part-of: cart
+      app.kubernetes.io/part-of: focus
     name: cart
     namespace: user1-cloudnativeapps
     resourceVersion: "1735235"
@@ -9948,7 +9948,7 @@ items:
     generation: 2
     labels:
       app: catalog
-      app.kubernetes.io/part-of: catalog 
+      app.kubernetes.io/part-of: focus 
     name: catalog
     namespace: user1-cloudnativeapps
     resourceVersion: "934501"
@@ -10044,7 +10044,6 @@ items:
     generation: 2
     labels:
       app: catalog-database
-      app.kubernetes.io/part-of: catalog 
     name: catalog-database
     namespace: user1-cloudnativeapps
     resourceVersion: "932464"
@@ -10140,7 +10139,7 @@ items:
     annotations:
       nodeshift/git-branch: master
       nodeshift/git-commit: 149f1045bdf09b6109c60dfe5292e42722e91b3b
-      app.openshift.io/connects-to: inventory-database,order,catalog,cart
+      app.openshift.io/connects-to: inventory,order,catalog,cart
     creationTimestamp: "2019-11-19T12:02:13Z"
     generation: 2
     labels:
@@ -10351,7 +10350,7 @@ items:
     generation: 2
     labels:
       app: inventory
-      app.kubernetes.io/part-of: inventory 
+      app.kubernetes.io/part-of: focus 
     name: inventory
     namespace: user1-cloudnativeapps
     resourceVersion: "927959"
@@ -10450,7 +10449,6 @@ items:
     generation: 2
     labels:
       app: inventory-database
-      app.kubernetes.io/part-of: inventory
     name: inventory-database
     namespace: user1-cloudnativeapps
     resourceVersion: "804865"
@@ -10549,7 +10547,7 @@ items:
     generation: 3
     labels:
       app: order
-      app.kubernetes.io/part-of: order
+      app.kubernetes.io/part-of: focus
     name: order
     namespace: user1-cloudnativeapps
     resourceVersion: "1740408"
@@ -10649,7 +10647,7 @@ items:
     generation: 2
     labels:
       app: order-database
-      app.kubernetes.io/part-of: order
+      app.kubernetes.io/part-of: focus
     name: order-database
     namespace: user1-cloudnativeapps
     resourceVersion: "1123794"
@@ -10751,7 +10749,7 @@ items:
     generation: 2
     labels:
       app: payment
-      app.kubernetes.io/part-of: payment
+      app.kubernetes.io/part-of: focus
     name: payment
     namespace: user1-cloudnativeapps
     resourceVersion: "1277023"
