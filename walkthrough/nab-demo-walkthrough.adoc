@@ -89,7 +89,7 @@ oc tag payment:latest payment:original
 == Context
 image::coolstore-initial-ui.png[]
 
-== Converting the Payment Service
+== Demonstrate the Working App
 
 Demonstrate the app working.  By going to the store.  You can find the URL like this:
 ----
@@ -109,7 +109,7 @@ Now navigate to the orders page.  Notice that the order gets processed after abo
 image:orders.png[]
 
 
-=== Create a Knative service (Knative Serving)
+== Create a Knative service (Knative Serving)
 
 NOTE: You must have done the Knative Operator installation in the link:nab-demo-setup.adoc[Setup doc].
 
@@ -179,7 +179,7 @@ Demonstrate that purchases can be made (as before), but orders are now not proce
 
 image:no-payment-processing.png[]
 
-==== Invoke the service
+== Invoke the service
 
 You can call the knative service that you just created if it is ready.  Your service is ready if you issue the following command and get the following output
 ----
@@ -195,7 +195,7 @@ export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
 
 Notice that the Developer Perspective service springs to life and that the order (eventually) gets processed
 
-=== Remove direct Knative integration code
+== Remove direct Knative integration code
 
 Currently our Payment service directly binds to Kafka to listen for events. Now that we have Knative eventing integration, we no longer need this code. CMD+p to navigate to the *PaymentResource.java* file 
 
@@ -236,7 +236,7 @@ kn service update payment --image image-registry.openshift-image-registry.svc:50
 
 Demonstrate that there is a new revision that is taking traffic
 
-=== Create Knative event to kickoff service (Knative Eventing)
+== Create Knative event to kickoff service (Knative Eventing)
 
 Now we want to use events the order topic to be our *source* (see also link:https://knative.dev/docs/eventing/samples/kafka/source/index.html[here] for generic example) and use the payment service as our *sink*
 
@@ -324,7 +324,7 @@ You can also show how subsequent requests when pod is up continue to be serviced
 when this is complete you can either take a look at revisions, or move on to kafka eventing
 
 
-=== Recompile the payment service (quarkus)
+== Recompile the payment service (quarkus)
 
 [WARNING]
 .Resource Requirements for Docker Quarkus Build
