@@ -106,7 +106,7 @@ image:checkout.png[]
 
 Now navigate to the orders page.  Notice that the order gets processed after about 5 seconds (you may need to refresh page to see this)
 
-image:orders[]
+image:orders.png[]
 
 
 === Create a Knative service (Knative Serving)
