@@ -10147,6 +10147,7 @@ items:
       project: coolstore-ui
       provider: nodeshift
       version: 1.0.0
+      app.kubernetes.io/part-of: focus
     name: coolstore-ui
     namespace: user1-cloudnativeapps
     resourceVersion: "1131469"
@@ -10647,7 +10648,6 @@ items:
     generation: 2
     labels:
       app: order-database
-      app.kubernetes.io/part-of: focus
     name: order-database
     namespace: user1-cloudnativeapps
     resourceVersion: "1123794"

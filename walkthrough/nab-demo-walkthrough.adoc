@@ -1,0 +1,427 @@
+= NAB Serverless Demo
+:imagesdir: images
+
+[IMPORTANT]
+.On necessary operators
+====
+See link:nab-demo-setup.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
+====
+
+== Initial Setup
+
+Run the following commands in a shell
+----
+git clone https://github.com/hatmarch/cloud-native-workshop-v2m4-labs.git -b prior-to-serverless-convert
+cd cloud-native-workshop-v2m4
+export DEMO_HOME=$(pwd)
+
+# ensure we have access to the stack that can build the app for .devcontainer
+docker login registry.redhat.io
+code .
+----
+
+* Make sure you have a user1-cloudnativeapps namespace
+----
+oc new-project user1-cloudnativeapps
+----
+
+IMPORTANT: When you run commands within the VSCode bash window, make sure you setup DEMO_HOME environment variable in each shell
+
+=== Install Kafka and Topics
+
+Refer to <<nab-demo-setup.adoc#Installing Kafka,Installing Kafka>> for instructions for installing the necessary operator and kafka cluster and topics in the project.
+
+=== Install the coolstore project
+
+Apply the template after the kafka queues are setup
+
+----
+oc project user1-cloudnativeapps
+oc apply -f $DEMO_HOME/install/cool-store-pre-serverless.yaml
+----
+
+After the template has been applied, then run the fix-up script on the installation
+
+----
+$DEMO_HOME/install/template-fix.sh
+----
+
+
+Build Every Project by running the script below.  This will first build all the projects locally in parallel and when they have all completed it will build them remotely to openshift in parallel.
+
+[NOTE]
+.Before building, first you can try...
+====
+updating image stream to point to external tags without a build
+----
+$DEMO_HOME/image-stream-setup.sh
+----
+====
+
+----
+./install/build-project.sh
+----
+
+[NOTE]
+.Where's the payment service?
+====
+This command does not build the payment service as it's assumed that the it will get changed.  But if you need to create the payment service
+
+----
+cd $DEMO_HOME/payment-service
+export MAVEN_OPTS="-Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -DskipTests
+----
+
+When the build is done, deploy with:
+
+----
+oc start-build payment --from-file target/*-runner.jar --follow
+----
+
+Finally, be sure to tag the payment build (we'll need this for service revisions later)
+----
+oc tag payment:latest payment:original
+----
+
+====
+
+== Context
+image::coolstore-initial-ui.png[]
+
+== Converting the Payment Service
+
+Demonstrate the app working.  By going to the store.  You can find the URL like this:
+----
+oc get route coolstore-ui -n user1-cloudnativeapps
+----
+
+NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload
+
+image:add-to-cart.png[]
+
+From the cart, checkout and then enter credit card details (any 16-digit number beginning with 4 will work)
+
+image:checkout.png[]
+
+Now navigate to the orders page.  Notice that the order gets processed after about 5 seconds (you may need to refresh page to see this)
+
+image:orders[]
+
+
+=== Create a Knative service (Knative Serving)
+
+NOTE: You must have done the Knative Operator installation in the link:nab-demo-setup.adoc[Setup doc].
+
+First stop our payment service from being run all the time (by deleting a deployment) and remove all connections to it
+
+----
+oc project user1-cloudnativeapps
+oc delete dc/payment route/payment svc/payment
+----
+
+Next, in order to create the Knative service, we need to know which image needs to be spun up to handle, in this case, order events.  To find the image go to *Builds > Image Streams* on the left menu then input payment to show the payment imagestream. Click on payment imagestream:
+
+image:find-image.png[]
+
+In the Overview tab, copy the IMAGE REPOSITORY value shown 
+
+image:image-repository.png[]
+
+[TIP]
+.You can use the command line to quickly get the image stream
+====
+----
+oc get is payment -o jsonpath="{.status.dockerImageRepository}" -n user1-cloudnativeapps
+----
+====
+Then open the *payment-service/knative/knative-serving-service.yaml* file and paste in that value
+
+Then update and update the image: line with this value.
+
+image:knative-service-edit.png[]
+
+[TIP]
+.To delete a knative service
+====
+Though knative services are reported from oc get svc and oc get rt, you cannot delete them in this way.  Instead you must delete them based on the distinct (knative) descriptor that they have
+
+Here is a command to delete all services (exposed as routes) that have the name that includes 'payment'
+----
+oc delete services.serving.knative.dev $(oc get rt --no-headers | grep -i payment | awk '{print $1}')
+----
+====
+
+Now create the service using this command:
+
+----
+oc apply -f payment-service/knative/knative-serving-service.yaml 
+----
+
+=== Demonstrate that payment is removed
+
+NOTE: The knative serving service will automatically run the pod when created, so best to make sure it goes back to 0 before it goes in the queue
+
+We need to remove our old microservice way of running the payment service.  For that we will delete build configs and existing deployments
+
+Setup your screen like the following.  Notice that QueueWindow is done by going to one of the kafka pods.
+
+image:initial-screen-layout.png[]
+
+Run this command in the queue window
+----
+bin/kafka-console-consumer.sh --topic orders --bootstrap-server localhost:9092
+----
+
+Navigate to the coolstore ui (by using badge on the coolstore-ui component)
+
+Demonstrate that purchases can be made (as before), but orders are now not processed
+
+image:no-payment-processing.png[]
+
+==== Invoke the service
+
+You can call the knative service that you just created if it is ready.  Your service is ready if you issue the following command and get the following output
+----
+$ oc get rt
+NAME      URL                                                                           READY   REASON
+payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
+----
+
+Create a new tab on the QueueWindow and navigate to the URL found (or use command below to get it quickly)
+----
+export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
+----
+
+Notice that the Developer Perspective service springs to life and that the order (eventually) gets processed
+
+=== Remove direct Knative integration code
+
+Currently our Payment service directly binds to Kafka to listen for events. Now that we have Knative eventing integration, we no longer need this code. CMD+p to navigate to the *PaymentResource.java* file 
+
+Delete (or comment out) the onMessage() method:
+
+image:onMessage.png[]
+
+And delete the configuration for the incoming stream. In *application.properties* , delete (or comment out) the following lines for the Incoming stream:
+
+image:payment-app-properties.png[]
+
+Explain that this is no longer necessary because instead the event will trigger the starting of a container with the event as the incoming context.
+
+Now rebuild the service locally
+----
+cd $DEMO_HOME/payment-service
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -DskipTests
+----
+
+And remotely
+
+----
+oc start-build payment --from-file target/*-runner.jar --follow
+----
+
+Then tag this new image
+
+----
+oc tag payment:latest payment:noqueue
+----
+
+And update our revision to use the image we just tagged.  We'll name the revision for the service name ({{.Service}} which will resolve to payment) and ({{.Generation}}, which should be 2)
+
+----
+kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:noqueue --name "{{.Service}}-{{.Generation}}"
+----
+
+Demonstrate that there is a new revision that is taking traffic
+
+=== Create Knative event to kickoff service (Knative Eventing)
+
+Now we want to use events the order topic to be our *source* (see also link:https://knative.dev/docs/eventing/samples/kafka/source/index.html[here] for generic example) and use the payment service as our *sink*
+
+[NOTE]
+====
+First we need to install the Kafka knative event source as seen below.  Go to link:nab-demo-setup.adoc[here] for more details
+
+image:kafka-event-operator.png[]
+====
+
+Now we need to create an instance of kakfa eventing for our namespace.  To do this call
+
+----
+$ oc apply -f install/kafka-eventing/kafka-eventing.yaml 
+knativeeventingkafka.eventing.knative.dev/knative-eventing-kafka created
+----
+
+Then wait until all the kafka pods are created.  Use the following watch command and look for output like this
+
+----
+$ watch "oc get pods | grep -i ^kafka"
+
+kafka-ch-controller-5f6b47c9fc-7xh8t          0/1     ContainerCreating   0          20m
+kafka-ch-dispatcher-5fc59bdf5b-hnt6h          0/1     ContainerCreating   0          20m
+kafka-controller-manager-0                    1/1     Running             0          4m25s
+kafka-webhook-74d6d5cd-gc4p5                  0/1     ContainerCreating   0          20m
+----
+
+Then use the yaml file to bind the kafka event source to the payment service sink (show what's going on first)
+
+image:kafka-event-source.png[]
+
+----
+oc apply -f $DEMO_HOME/payment-service/knative/kafka-event-source.yaml 
+----
+
+Then check to make source the event source is running
+
+----
+$ oc get pods -l knative-eventing-source-name=kafka-source
+----
+
+Now we want to prepare some windows for our demo.
+
+*Window 1*: Duplicate the tab where you're looking at the user1-cloudnativeapps project.  Then navigate to the *Workloads > Pods* and find the _my-cluster-kafka-0_ pod.  Go then to the Terminal tab.  From there, enter the command as follows (also in image) and click _Expand_ in the upper right corner
+
+image:watch-orders.png[]
+
+----
+bin/kafka-console-consumer.sh --topic orders --bootstrap-server localhost:9092
+----
+
+*Window 2*: Duplicate the tab again and then switch to the *Developer Perspective*.  There will be a lot of pods, so you'll want to filter based on the "focus" application group.  Make sure the knative payment pod is featured prominently.  It should indicate zero pods
+
+image:window2-setup.png[]
+
+
+Then hit the coolstore-ui by *[SHIFT+OPTION] clicking* the launcher icon on the Developer Perspective (see previous) and moving the newly opened window to the right
+
+Recommended arrangement is like this:
+
+image:recommended-layout.png[]
+
+[HINT]
+.If you need to open the window another way...
+====
+You can find the URL by running this command in a terminal
+----
+oc get route -n user1-cloudnativeapps | grep coolstore-ui | awk '{print $2}'
+----
+====
+
+Now puchase something and add it to the cart.  Then Checkout.
+
+Upon checkout you should see the payment pod spinning up to consume the order
+
+image:consuming-kafka-queue.png[]
+
+You can then go to the *Orders* section of the site to show that the order was consumed.  When you return, the pod should be spun down (with a clear or black outline).
+
+If you'd like to play more with spin up and spin down, you can click on the route badge on the topography view to show the pod spinning up and then spinning down.
+
+You can also show how subsequent requests when pod is up continue to be serviced by that pod (subject to the max concurrency number setup in knative-eventing).
+
+when this is complete you can either take a look at revisions, or move on to kafka eventing
+
+
+=== Recompile the payment service (quarkus)
+
+[WARNING]
+.Resource Requirements for Docker Quarkus Build
+====
+If you are running linux in a container, you need to make sure the docker daemon has enough memory assigned to it.  This configuration seemed to be enough to build the payment-service
+
+image:docker-requirement.png[]
+====
+
+----
+cd payment-service
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -Pnative -DskipTests
+----
+
+While that's compiling, in another VSCode terminal, update our builder to be able to build native quarkus
+
+----
+oc delete bc payment
+oc new-build quay.io/quarkus/ubi-quarkus-native-binary-s2i:19.2.0 --binary --name=payment -l app=payment
+----
+
+Once the native maven build is done, we can start a build using our new configuration
+
+----
+cd $DEMO_HOME/payment-service
+oc start-build payment --from-file target/*-runner --follow
+----
+
+Then tag this latest build accordingly
+
+----
+oc tag payment:latest payment:quarkus
+----
+
+Then update our knative service
+
+----
+kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:quarkus --revision-name "{{.Service}}-{{.Generation}}"
+----
+
+=== Knative Revisions
+
+Start with traffic to the original version
+
+----
+$ kn service update payment --traffic @latest=100Updating Service 'payment' in namespace 'user1-cloudnativeapps':
+
+  0.275s Ingress has not yet been reconciled.
+  1.401s Ready to serve.
+
+Service 'payment' updated with latest revision 'payment-4' (unchanged) and URL:
+http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com
+$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starttransfer}\n"
+12.305205
+$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starttransfer}\n"
+0.546286
+----
+
+Now look at the quarkus version
+
+----
+$kn service update payment --tag payment-3=quarkus --traffic quarkus=100
+
+$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starer}\n"f 
+10.930526
+$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starttransfer}\n"
+0.543870
+----
+
+TODO: See link:https://blog.openshift.com/knative-configurations-routes-and-revisions/[here]
+
+TODO: See link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/02-basic-fundas.html#deploying-new-revision[here]
+
+Tagging in ImageStream
+----
+oc tag payment@sha256:573f369a858c692b71f02acb470b321816d8ff8ababece8148ac8c939a37c9e2 payment:java
+----
+
+=== Service Autoscaling
+
+NOTE: _The knative-serving attribute scale-to-zero-grace-period is a “dynamic parameter” i.e. any updates to this value are reflected immediately to all its consumers; while all other parameters are static parameters i.e. change to it need a restart of the autoscaler deployment of knative-serving namespace._
+
+TODO: See link:https://knative.dev/docs/serving/samples/autoscale-go/index.html[here]
+Then reopen the website
+
+==== Service Pinning
+
+TODO: See link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/02-basic-fundas.html#_service_pinned_to_first_revision[here]
+
+== TODO
+
+
+* Make sure the reset scripts work appropriately (with the option to keep all operators active)
+
+* test out the image-stream stuff
+
+* update the template to
+    - add a variable for the namespace (currently hardcoded to user1-cloudnativeapps)
+    - change the image streams
