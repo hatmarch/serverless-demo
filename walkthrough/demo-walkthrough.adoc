@@ -4,7 +4,7 @@
 [IMPORTANT]
 .On necessary operators
 ====
-See link:nab-demo-setup.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
+See link:demo-setup.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
 ====
 
 == Initial Setup
