@@ -6,14 +6,10 @@ spec:
   template:
     metadata:
       name: payment-v1
-      labels:
-        app.kubernetes.io/part-of: focus
       annotations:
         # disable istio-proxy injection
         sidecar.istio.io/inject: "false"
     spec:
       containers:
-        # NOTE: replace image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment with the cluster 
-        # image registry
-      - image: image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:original
-      
+        # Replace Project name userXX-cloudnativeapps with project in which payment is deployed
+      - image: YOUR_IMAGE_SERVICE_URL/payment:latest

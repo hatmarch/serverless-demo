@@ -24,9 +24,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
     private static final Logger log = LoggerFactory.getLogger(ShoppingCartServiceImpl.class);
 
-    @Inject
-    @Remote("default")
-    RemoteCache<String, ShoppingCart> carts;
+    // TODO Inject RemoteCache
 
     @Inject
     PromotionService ps;
