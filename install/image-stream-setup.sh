@@ -1,6 +1,16 @@
 #!/bin/bash
-oc tag --source docker mhildema/payment:v1 payment:v1
-oc tag --source docker mhildema/cart:v1 cart:v1
-oc tag --source docker mhildema/coolstore-ui:v1 coolstore-ui:v1
-oc tag --source docker mhildema/inventory:v1 inventory:v1
-oc tag --source docker mhildema/catalog:v1 catalog:v1
+oc tag --source docker mhildema/payment:v1 payment:initial-build
+oc tag --source docker mhildema/cart:v1 cart:initial-build
+oc tag --source docker mhildema/coolstore-ui:v1 coolstore-ui:initial-build
+oc tag --source docker mhildema/inventory:v1 inventory:initial-build
+oc tag --source docker mhildema/catalog:v1 catalog:initial-build
+oc tag --source docker mhildema/order:v1 order:initial-build
+
+# Now trigger builds by setting the latest tag in the image stream (which the DeploymentConfigs should be keyed to)
+oc tag payment:initial-build payment:latest
+oc tag cart:initial-build cart:latest
+oc tag coolstore-ui:initial-build coolstore-ui:latest
+oc tag inventory:initial-build inventory:latest
+oc tag catalog:initial-build catalog:latest
+oc tag order:initial-build order:latest
+

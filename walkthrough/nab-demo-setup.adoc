@@ -8,7 +8,7 @@
 Open a new terminal and start a watch on the command oc get csv -n openshift-operators. For further reference in the setup we will call this terminal as WATCH_WINDOW.
 
 ----
-watch 'oc get csv -n openshift-operators -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
+watch 'oc get csv -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt -n openshift-operators' 
 ----
 
 ====
@@ -87,9 +87,9 @@ my-cluster-zookeeper-1                                2/2     Running     0     
 my-cluster-zookeeper-2                                2/2     Running     0          4m12s
 ----
 
-== Installing Service Mesh
+== Optional: Installing Service Mesh
 
-NOTE: See also Kamesh's guide link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/01-setup.html#download-tutorial-sources[here] for another take on setup steps
+NOTE: _Since the advent of OpenShift Serverless, it looks like setting up Istio separately is no longer required.  See also Kamesh's guide link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/01-setup.html#download-tutorial-sources[here] for another take on setup steps._
 
 First setup Istio by creating the istio project and installing the operators
 

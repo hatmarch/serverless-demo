@@ -54,7 +54,7 @@ Build Every Project by running the script below.  This will first build all the 
 ====
 updating image stream to point to external tags without a build
 ----
-$DEMO_HOME/image-stream-setup.sh
+$DEMO_HOME/install/image-stream-setup.sh
 ----
 ====
 
@@ -158,6 +158,24 @@ Now create the service using this command:
 oc apply -f payment-service/knative/knative-serving-service.yaml 
 ----
 
+[NOTE]
+.A better way to install the service
+====
+If you have access to the kn CLI, you can create a service without YAML.  The nice thing about this is that it will tell you once ingress is configured (without having to run a watch)
+
+----
+kn service create payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:initial-build --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false
+----
+====
+
+It will take a while for ingress to be configured for the service.  You can issue this command and you should see the following output:
+
+----
+$ watch oc get rt
+NAME      URL                                                                           READY   REASON
+payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
+----
+
 === Demonstrate that payment is removed
 
 NOTE: The knative serving service will automatically run the pod when created, so best to make sure it goes back to 0 before it goes in the queue
@@ -231,7 +249,7 @@ oc tag payment:latest payment:noqueue
 And update our revision to use the image we just tagged.  We'll name the revision for the service name ({{.Service}} which will resolve to payment) and ({{.Generation}}, which should be 2)
 
 ----
-kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:noqueue --name "{{.Service}}-{{.Generation}}"
+kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:noqueue --revision-name "{{.Service}}-{{.Generation}}"
 ----
 
 Demonstrate that there is a new revision that is taking traffic
@@ -242,7 +260,7 @@ Now we want to use events the order topic to be our *source* (see also link:http
 
 [NOTE]
 ====
-First we need to install the Kafka knative event source as seen below.  Go to link:nab-demo-setup.adoc[here] for more details
+First we need to install the Kafka knative event source operator as seen below.  Go to link:nab-demo-setup.adoc[here] for more details
 
 image:kafka-event-operator.png[]
 ====
@@ -250,7 +268,7 @@ image:kafka-event-operator.png[]
 Now we need to create an instance of kakfa eventing for our namespace.  To do this call
 
 ----
-$ oc apply -f install/kafka-eventing/kafka-eventing.yaml 
+$ oc apply -f $DEMO_HOME/install/kafka-eventing/kafka-eventing.yaml 
 knativeeventingkafka.eventing.knative.dev/knative-eventing-kafka created
 ----
 
@@ -357,13 +375,13 @@ oc start-build payment --from-file target/*-runner --follow
 Then tag this latest build accordingly
 
 ----
-oc tag payment:latest payment:quarkus
+oc tag payment:latest payment:quarkus-native
 ----
 
 Then update our knative service
 
 ----
-kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:quarkus --revision-name "{{.Service}}-{{.Generation}}"
+kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:quarkus-native --revision-name "{{.Service}}-{{.Generation}}"
 ----
 
 === Knative Revisions
@@ -378,9 +396,12 @@ $ kn service update payment --traffic @latest=100Updating Service 'payment' in n
 
 Service 'payment' updated with latest revision 'payment-4' (unchanged) and URL:
 http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com
-$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starttransfer}\n"
+
+export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
+
+$ curl $SVC_URL -s -o /dev/null -w "%{time_starttransfer}\n"
 12.305205
-$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starttransfer}\n"
+$ curl $SVC_URL -s -o /dev/null -w "%{time_starttransfer}\n"
 0.546286
 ----
 
@@ -388,10 +409,11 @@ Now look at the quarkus version
 
 ----
 $kn service update payment --tag payment-3=quarkus --traffic quarkus=100
+export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
 
-$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starer}\n"f 
+$ curl $SVC_URL -s -o /dev/null -w "%{time_starttransfer}\n"f 
 10.930526
-$ curl http://payment.user1-cloudnativeapps.apps.cluster-nab-92c5.nab-92c5.example.opentlc.com -s -o /dev/null -w "%{time_starttransfer}\n"
+$ curl $SVC_URL -s -o /dev/null -w "%{time_starttransfer}\n"
 0.543870
 ----
 
