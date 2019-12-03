@@ -1,0 +1,12 @@
+apiVersion: maistra.io/v1
+kind: ServiceMeshMemberRoll
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  members:
+ # NOTE: Since Serverless Tech preview, adding knative-serving to the memberroll will cause knative serving to fail 
+ # - knative-serving
+ # - knative-eventing
+  #- user1-cloudnativeapps
+  - demo-app

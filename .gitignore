@@ -5,3 +5,7 @@ target/
 .classpath
 .project
 .settings/
+.settings/
+coolstore-ui/tmp
+
+.vscode

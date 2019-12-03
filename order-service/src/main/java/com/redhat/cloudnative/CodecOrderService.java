@@ -12,9 +12,10 @@ import java.util.List;
 @ApplicationScoped
 public class CodecOrderService {
 
-    @Inject MongoClient mongoClient;
+    @Inject
+    MongoClient mongoClient;
 
-    public List<Order> list(){
+    public List<Order> list() {
         List<Order> list = new ArrayList<>();
         MongoCursor<Order> cursor = getCollection().find().iterator();
 
@@ -28,10 +29,12 @@ public class CodecOrderService {
         return list;
     }
 
-    public void add(Order order){
+    public void add(Order order) {
         getCollection().insertOne(order);
     }
 
-    // TODO: Add MongoCollection method here
-    
+    private MongoCollection<Order> getCollection() {
+        return mongoClient.getDatabase("order").getCollection("order", Order.class);
+    }
+
 }
