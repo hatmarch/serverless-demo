@@ -15,7 +15,7 @@ watch 'oc get csv -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt -n op
 
 == Setup Prerequisites
 
-Run the folloing commands in a shell
+Run the following commands in a shell
 ----
 git clone https://github.com/hatmarch/serverless-demo.git
 cd serverless-demo

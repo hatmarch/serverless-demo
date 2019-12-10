@@ -29,7 +29,7 @@ IMPORTANT: When you run commands within the VSCode bash window, make sure you se
 
 === Install Kafka and Topics
 
-Refer to <<nab-demo-setup.adoc#Installing Kafka,Installing Kafka>> for instructions for installing the necessary operator and kafka cluster and topics in the project.
+Refer to <<demo-setup.adoc#Installing Kafka,Installing Kafka>> for instructions for installing the necessary operator and kafka cluster and topics in the project.
 
 === Install the coolstore project
 
@@ -56,6 +56,13 @@ updating image stream to point to external tags without a build
 ----
 $DEMO_HOME/install/image-stream-setup.sh
 ----
+
+Look out for errors like this that seem to result if the tag command has not been able to yet pull the image from docker
+----
+error: "payment:initial-build" is not currently pointing to an image, cannot use it as the source of a tag
+----
+
+If this happens, then attempt to run the image stream setup again.
 ====
 
 ----
@@ -96,7 +103,7 @@ Demonstrate the app working.  By going to the store.  You can find the URL like 
 oc get route coolstore-ui -n user1-cloudnativeapps
 ----
 
-NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload
+[blue]#NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload#
 
 image:add-to-cart.png[]
 
@@ -111,7 +118,7 @@ image:orders.png[]
 
 == Create a Knative service (Knative Serving)
 
-NOTE: You must have done the Knative Operator installation in the link:nab-demo-setup.adoc[Setup doc].
+NOTE: You must have done the Knative Operator installation in the link:demo-setup.adoc[Setup doc].
 
 First stop our payment service from being run all the time (by deleting a deployment) and remove all connections to it
 
@@ -249,10 +256,31 @@ oc tag payment:latest payment:noqueue
 And update our revision to use the image we just tagged.  We'll name the revision for the service name ({{.Service}} which will resolve to payment) and ({{.Generation}}, which should be 2)
 
 ----
-kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:noqueue --revision-name "{{.Service}}-{{.Generation}}"
+kn service update payment --image $(oc get istag/payment:noqueue -o jsonpath='{.image.dockerImageReference}') --revision-name "{{.Service}}-{{.Generation}}"
 ----
 
 Demonstrate that there is a new revision that is taking traffic
+
+----
+$ kn service describe payment
+Name:         payment
+Namespace:    user1-cloudnativeapps
+Labels:       app.kubernetes.io/part-of=focus
+Annotations:  sidecar.istio.io/inject=false
+Age:          36m
+URL:          http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com
+Address:      http://payment.user1-cloudnativeapps.svc.cluster.local
+
+Revisions:  
+  100%  @latest (payment-3) [3] (1m)
+        Image:  image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:noqueue (pinned to 21ca1a)
+
+Conditions:  
+  OK TYPE                   AGE REASON
+  ++ Ready                   1m 
+  ++ ConfigurationsReady     1m 
+  ++ RoutesReady             1m 
+----
 
 == Create Knative event to kickoff service (Knative Eventing)
 
@@ -260,7 +288,7 @@ Now we want to use events the order topic to be our *source* (see also link:http
 
 [NOTE]
 ====
-First we need to install the Kafka knative event source operator as seen below.  Go to link:nab-demo-setup.adoc[here] for more details
+First we need to install the Kafka knative event source operator as seen below.  Go to link:demo-setup.adoc[here] for more details
 
 image:kafka-event-operator.png[]
 ====
@@ -378,10 +406,12 @@ Then tag this latest build accordingly
 oc tag payment:latest payment:quarkus-native
 ----
 
-Then update our knative service
+Then update our knative service (tagging revisions before and after updating the service)
 
 ----
-kn service update payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:quarkus-native --revision-name "{{.Service}}-{{.Generation}}"
+kn service update payment --tag @latest=traditional
+kn service update payment --image $(oc get istag/payment:quarkus-native -o jsonpath='{.image.dockerImageReference}') --revision-name "{{.Service}}-{{.Generation}}"
+kn service update payment --tag @latest=native
 ----
 
 === Knative Revisions
@@ -389,7 +419,8 @@ kn service update payment --image image-registry.openshift-image-registry.svc:50
 Start with traffic to the original version
 
 ----
-$ kn service update payment --traffic @latest=100Updating Service 'payment' in namespace 'user1-cloudnativeapps':
+$ kn service update payment --traffic traditional=100
+Updating Service 'payment' in namespace 'user1-cloudnativeapps':
 
   0.275s Ingress has not yet been reconciled.
   1.401s Ready to serve.
@@ -405,10 +436,10 @@ $ curl $SVC_URL -s -o /dev/null -w "%{time_starttransfer}\n"
 0.546286
 ----
 
-Now look at the quarkus version
+Now look at the quarkus native version
 
 ----
-$kn service update payment --tag payment-3=quarkus --traffic quarkus=100
+$ kn service update payment --traffic native=100
 export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
 
 $ curl $SVC_URL -s -o /dev/null -w "%{time_starttransfer}\n"f 
@@ -436,6 +467,32 @@ Then reopen the website
 ==== Service Pinning
 
 TODO: See link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/02-basic-fundas.html#_service_pinned_to_first_revision[here]
+
+== Troubleshooting
+
+=== Insecure ImageRegistry
+
+Might be solved as per link:https://github.com/knative/serving/issues/2136[here] but can't get the controller pod to take the new environment variable
+
+Looks like it has something to do with the labels.  If the sha is used instead it seems to work properly.  You can find the sha like this:
+----
+$ oc get istag/payment:latest -o jsonpath='{.image.dockerImageReference}'
+image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment@sha256:21ca1acc3f292b6e94fab82fe7a9cf7ff743e4a8c9459f711ffad125379cf3c7
+----
+
+And then apply it as a service like this:
+----
+kn service create payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment@sha256:729e04397cbbfb3642e6c767b2ab7daf7bb3cb79f1c2860967523c0911108534 --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false --force
+----
+
+----
+oc port-forward <image-registry-pod> -n openshift-image-registry 5001:5000
+----
+
+To get the cert as a pem file, do this:
+----
+openssl s_client -showcerts -connect localhost:5001 </dev/null 2>/dev/null|openssl x509 -outform PEM >mycertfile.pem
+----
 
 == TODO
 
