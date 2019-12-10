@@ -11,8 +11,8 @@ See link:demo-setup.adoc[] for information on operators and other prerequisites 
 
 Run the following commands in a shell
 ----
-git clone https://github.com/hatmarch/cloud-native-workshop-v2m4-labs.git -b prior-to-serverless-convert
-cd cloud-native-workshop-v2m4
+git clone https://github.com/hatmarch/serverless-demo.git
+cd serverless-demo
 export DEMO_HOME=$(pwd)
 
 # ensure we have access to the stack that can build the app for .devcontainer
