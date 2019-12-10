@@ -1,4 +1,4 @@
-= NAB Serverless Demo: Setup
+= Serverless Demo: Setup
 
 :imagesdir: images
 
