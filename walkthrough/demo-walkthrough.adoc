@@ -171,7 +171,7 @@ oc apply -f payment-service/knative/knative-serving-service.yaml
 If you have access to the kn CLI, you can create a service without YAML.  The nice thing about this is that it will tell you once ingress is configured (without having to run a watch)
 
 ----
-kn service create payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment:initial-build --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false
+kn service create payment --image $(oc get istag/payment:initial-build -o jsonpath='{.image.dockerImageReference}') --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false
 ----
 ====
 
@@ -482,7 +482,7 @@ image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment@s
 
 And then apply it as a service like this:
 ----
-kn service create payment --image image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment@sha256:729e04397cbbfb3642e6c767b2ab7daf7bb3cb79f1c2860967523c0911108534 --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false --force
+kn service create payment --image $(oc get istag/payment:initial-build -o jsonpath='{.image.dockerImageReference}') --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false --force
 ----
 
 ----
