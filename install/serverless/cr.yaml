@@ -1,4 +1,9 @@
-apiVersion: serving.knative.dev/v1alpha1
+apiVersion: v1
+kind: Namespace
+metadata:
+ name: knative-serving
+---
+apiVersion: operator.knative.dev/v1alpha1
 kind: KnativeServing
 metadata:
   name: knative-serving
@@ -12,7 +17,7 @@ spec:
       max-scale-up-rate: '10'
       panic-threshold-percentage: '200.0'
       panic-window: 6s
-      # panic-window-percentage must be in [33.333333333333336, 100] or autoscaler will crash
+      # panic-window-percentage must be in [33.333333333333336, 100] or autoscaler will crash (at least in v1.2)
       panic-window-percentage: '33.34'
       scale-to-zero-grace-period: 6s
       stable-window: 10s
@@ -40,5 +45,5 @@ spec:
       logging.enable-var-log-collection: 'false'
       metrics.backend-destination: prometheus
     tracing:
-      enable: 'false'
+      backend: none
       sample-rate: '0.1'

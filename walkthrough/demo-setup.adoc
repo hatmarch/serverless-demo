@@ -1,41 +1,120 @@
-= Serverless Demo: Setup
-
+= Serverless Demo: Setup =
+:experimental:
 :imagesdir: images
+:toc:
+:toclevels: 4
 
-[TIP]
-.On watching operator install progress
+
+== Setup Prerequisites ==
+
+[IMPORTANT]
 ====
+* Before running any script commands, make sure the run the following in the appropriate shell
++
+----
+source scripts/shell-setup.sh
+----
++
+* Make sure you have a user1-cloudnativeapps namespace (the install script will run this)
++
+----
+oc new-project user1-cloudnativeapps
+----
+====
+
+== Preparing Cluster ==
+
+. To get the cluster ready for the link:demo-walkthrough.adoc[] you will need to run the following script.  Setup can take more than 10 minutes to complete (especially on crc clusters running locally on a laptop)
++
+----
+$DEMO_HOME/scripts/install-prereq.sh
+----
++
+. Check that everything is installed correctly:
++
+Kafka is installed correctly once you see the following pods
+----
+my-cluster-kafka-0                                    2/2     Running     0          94s
+my-cluster-kafka-1                                    2/2     Running     0          94s
+my-cluster-kafka-2                                    2/2     Running     0          94s
+my-cluster-zookeeper-0                                2/2     Running     0          4m13s
+my-cluster-zookeeper-1                                2/2     Running     0          4m13s
+my-cluster-zookeeper-2                                2/2     Running     0          4m12s
+----
++
+. Check the knative-serving project with this command:
++
+----
+oc get pods -n knative-serving -w
+----
++
+A successful serverless install will show the following pods in knative-serving namespace:
++
+----
+NAME                                READY   STATUS    RESTARTS   AGE
+activator-dfb5b7b67-hh5kh           1/1     Running   0          79s
+autoscaler-85bb4898c5-5sssb         1/1     Running   0          77s
+autoscaler-hpa-865b6d49b7-7sqns     1/1     Running   0          78s
+controller-65c8dd48d6-5cl9v         1/1     Running   0          73s
+networking-istio-7c9fb7dd4c-lsbdm   1/1     Running   0          73s
+webhook-95969d4fc-t9d4v             1/1     Running   0          72s
+----
+
+== Appendix ==
+
+=== Installing Knative Kafka Eventing ===
+
+NOTE: This is done by default by the install-prereq.sh script, but is outlined here if you'd like to show off operators after the fact.  To have the script skip the installation of this operator then run the install-prereq.sh script with the `--skip-knative-kafka-eventing` flag.
+
+. First subscribe to the operator
++
+----
+oc apply -f "$DEMO_HOME/install/kafka-eventing/subscription.yaml"
+----
++
+.. ALTERNATIVELY, this can also be done manually.  In user1-cloudnativeapps go to *Operators > Operator Hub* to find it
++
+image:kafka-event-operator.png[]
++
+. Then install the operator with the default values (e.g. across whole cluster)
++
+. Track installation with this command:
++
+----
+watch 'oc get csv -n user1-cloudnativeapps -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
+----
++
+. and wait until you see:
++
+----
+NAME                                VERSION   PHASE
+amqstreams.v1.4.0                   1.4.0     Succeeded
+knative-eventing-operator.v0.13.0   0.13.0    Succeeded
+knative-kafka-operator.v0.13.2      0.13.2    Succeeded
+serverless-operator.v1.6.0          1.6.0     Succeeded
+----
+
+=== Monitoring Installation Progress ===
+
 Open a new terminal and start a watch on the command oc get csv -n openshift-operators. For further reference in the setup we will call this terminal as WATCH_WINDOW.
 
 ----
 watch 'oc get csv -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt -n openshift-operators' 
 ----
 
-====
+==== Monitoring Kafka Cluster Installation ====
 
-== Setup Prerequisites
+You can tail the logs of the amqstreams operator's logs to determine why an installation is taking so long:
 
-Run the following commands in a shell
 ----
-git clone https://github.com/hatmarch/serverless-demo.git
-cd serverless-demo
-export DEMO_HOME=$(pwd)
-
-# ensure we have access to the stack that can build the app for .devcontainer
-docker login registry.redhat.io
-code .
+stern -l "name=amq-streams-cluster-operator" -n openshift-operators
 ----
 
-* Make sure you have a user1-cloudnativeapps namespace
-----
-oc new-project user1-cloudnativeapps
-----
+NOTE: stern is installed in the .devcontainer that is in the root of this repo.  If you open the repository folder in a container (using vscode remote) stern is installed on the container.
 
-IMPORTANT: When you run commands within the VSCode bash window, make sure you setup DEMO_HOME environment variable in each shell
+=== Missing Operator Catalogs ===
 
-== Operator Prerequisites
-
-Make sure to subscribe to the necessary channels using these commands
+If you cannot find the operators referenced then run the following on your cluster
 
 ----
 oc apply -f "$DEMO_HOME/install/redhat-operators-csc.yaml" \
@@ -50,211 +129,4 @@ A successful reconciliation should show an output like:
 NAME                           STATUS      MESSAGE                                       AGE
 community-operators-packages   Succeeded   The object has been successfully reconciled   62s
 redhat-operators-packages      Succeeded   The object has been successfully reconciled   62s
-----
-
-== Installing Kafka 
-
-=== Installing Kafka Operator
-* Subscribe to the AMQ Streams Operator in the user1-cloudnativeapps namespace
-----
-oc apply -f $DEMO_HOME/install/kafka/subscription.yaml
-----
-
-Use the WATCH_WINDOW to look for the following output
-
-----
-NAME                VERSION   PHASE
-amqstreams.v1.3.0   1.3.0     Succeeded
-----
-
-=== Installing Kafka in the namespace
-
-* Install the kafka queues and two topics
-
-----
-oc apply -f $DEMO_HOME/install/kafka/kafka.yaml
-oc apply -f $DEMO_HOME/install/kafka/kafka-order-topic.yaml 
-oc apply -f $DEMO_HOME/install/kafka/kafka-payment-topic.yaml 
-----
-
-Kafka is installed once you see the following pods
-----
-my-cluster-kafka-0                                    2/2     Running     0          94s
-my-cluster-kafka-1                                    2/2     Running     0          94s
-my-cluster-kafka-2                                    2/2     Running     0          94s
-my-cluster-zookeeper-0                                2/2     Running     0          4m13s
-my-cluster-zookeeper-1                                2/2     Running     0          4m13s
-my-cluster-zookeeper-2                                2/2     Running     0          4m12s
-----
-
-== Optional: Installing Service Mesh
-
-NOTE: _Since the advent of OpenShift Serverless, it looks like setting up Istio separately is no longer required.  See also Kamesh's guide link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/01-setup.html#download-tutorial-sources[here] for another take on setup steps._
-
-First setup Istio by creating the istio project and installing the operators
-
-----
-oc adm new-project istio-system 
-oc apply -f "$DEMO_HOME/install/servicemesh/subscription.yaml"
-----
-
-The servicemesh operator needs to be _copied to the *istio-system* project_ before we can create a ServiceMeshControlPlane and ServiceMeshMemberRoll custom resources, you can adapt the WATCH_WINDOW commmand to look at the istio-system namespace as so
-
-----
-watch 'oc get csv -n istio-system -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
-----
-
-A successful servicemesh subscription install should show the output in WATCH_WINDOW like:
-
-----
-NAME                                         VERSION               PHASE
-elasticsearch-operator.4.1.20-201910102034   4.1.20-201910102034   Succeeded
-jaeger-operator.v1.13.1                      1.13.1                Succeeded
-kiali-operator.v1.0.6                        1.0.6                 Succeeded
-servicemeshoperator.v1.0.1                   1.0.1                 Succeeded
-----
-
-Once the operators are ready in the istio-system project, you can startup the servicemesh by creating a mesh and a memberroll.
-
-----
-oc create -f "$DEMO_HOME/install/servicemesh/smcp.yaml" && \
-oc create -f "$DEMO_HOME/install/servicemesh/smmr.yaml"
-----
-
-It will take few minutes for the servicemesh components to be installed, you can watch the status using the command:
-
-----
-oc get pods -n istio-system -w
-----
-
-A successful servicemesh install should show the following pods:
-
-----
-NAME                                     READY   STATUS    RESTARTS   AGE
-cluster-local-gateway-7795cc7956-mqmq7   1/1     Running   0          92s
-istio-citadel-f88bdd688-c52z8            1/1     Running   0          2m58s
-istio-galley-f8f96c6bf-x7f4k             1/1     Running   0          2m48s
-istio-ingressgateway-65bf84457c-7rh5t    1/1     Running   0          92s
-istio-pilot-7f57f8bb5b-cr2qr             1/1     Running   0          110s
-----
-
-WARNING: Installing Service Mesh and adding user1-cloudnativeapp to the service mesh might add a network policy that causes the routes to fail.  Delete this network policy to retore routes.
-
-== Installing Serverless 
-
-=== Installing Serving Operator
-
-Install knative serving.  First subscribe
-
-----
-oc adm new-project knative-serving
-oc apply -f "$DEMO_HOME/install/knative-serving/subscription.yaml" 
-----
-
-The serverless operator needs to be _copied to the *knative-serving* project_ before we can create a ServiceMeshControlPlane and ServiceMeshMemberRoll custom resources, you can adapt the WATCH_WINDOW commmand to look at the knative-serving namespace as so
-
-----
-watch oc get csv -n knative-serving -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt
-----
-
-Successful execution will look like this:
-
-----
-NAME                                        VERSION              PHASE
-elasticsearch-operator.4.2.8-201911190952   4.2.8-201911190952   Succeeded
-jaeger-operator.v1.13.1                     1.13.1               Succeeded
-kiali-operator.v1.0.7                       1.0.7                Succeeded
-serverless-operator.v1.2.0                  1.2.0                Succeeded
-servicemeshoperator.v1.0.2                  1.0.2                Succeeded
-----
-
-=== Installing Knative Serving Instance
-
-Only when that's done can you configure knative serving
-
-----
-oc apply -f "$DEMO_HOME/install/knative-serving/cr.yaml" -n knative-serving
-
-oc get pods -n knative-serving -w
-----
-
-A successful serverless install will show the following pods in knative-serving namespace:
-
-----
-NAME                                READY   STATUS    RESTARTS   AGE
-activator-dfb5b7b67-hh5kh           1/1     Running   0          79s
-autoscaler-85bb4898c5-5sssb         1/1     Running   0          77s
-autoscaler-hpa-865b6d49b7-7sqns     1/1     Running   0          78s
-controller-65c8dd48d6-5cl9v         1/1     Running   0          73s
-networking-istio-7c9fb7dd4c-lsbdm   1/1     Running   0          73s
-webhook-95969d4fc-t9d4v             1/1     Running   0          72s
-----
-
-== Installing Knative Eventing
-
-----
-oc adm new-project knative-eventing
-oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
-----
-
-The serverless operator needs to be _copied to the *knative-eventing* project_ before we can use it. You can adapt the WATCH_WINDOW commmand to look at the knative-serving namespace as so
-
-----
-watch 'oc get csv -n knative-eventing -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
-----
-
-A successful knative eventing subscription install should show the output in WATCH_WINDOW like:
-
-----
-NAME                                         VERSION               PHASE
-elasticsearch-operator.4.1.20-201910102034   4.1.20-201910102034   Succeeded
-jaeger-operator.v1.13.1                      1.13.1                Succeeded
-kiali-operator.v1.0.6                        1.0.6                 Succeeded
-knative-eventing-operator.v0.8.0             0.8.0                 Succeeded
-serverless-operator.v1.0.0                   1.0.0                 Succeeded
-servicemeshoperator.v1.0.1                   1.0.1                 Succeeded
-----
-
-Finally, check that the pods in the knative-serving namespace look like this
-
-----
-$ oc get pods -n knative-eventing
-NAME                                   READY   STATUS    RESTARTS   AGE
-eventing-controller-5c7c649d4b-gf4v9   1/1     Running   0          7m11s
-eventing-webhook-569c567bd5-wm5mk      1/1     Running   0          7m10s
-imc-controller-7c9898558b-rkhtw        1/1     Running   0          7m4s
-imc-dispatcher-cd5c98964-q94xd         1/1     Running   0          7m4s
-sources-controller-5b86d684fb-252sd    1/1     Running   0          7m10s
-----
-
-== Installing Knative Kafka Eventing
-
-First subscribe to the operator
-
-----
-oc apply -f "$DEMO_HOME/install/kafka-eventing/subscription.yaml"
-----
-
-This can also be done manually.  In user1-cloudnativeapps go to *Operators > Operator Hub* to find it
-
-image:kafka-event-operator.png[]
-
-Then install the operator with the default values (e.g. across whole cluster)
-
-Use the WATCH_WINDOW with this command:
-----
-watch 'oc get csv -n user1-cloudnativeapps -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
-----
-
-and wait until you see:
-
-----
-NAME                                        VERSION              PHASE
-amqstreams.v1.3.0                           1.3.0                Succeeded
-elasticsearch-operator.4.2.8-201911190952   4.2.8-201911190952   Succeeded
-jaeger-operator.v1.13.1                     1.13.1               Succeeded
-kiali-operator.v1.0.7                       1.0.7                Succeeded
-knative-kafka-operator.v0.9.0               0.9.0                Succeeded
-serverless-operator.v1.2.0                  1.2.0                Succeeded
-servicemeshoperator.v1.0.2                  1.0.2                Succeeded
 ----

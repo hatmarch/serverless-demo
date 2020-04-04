@@ -1,6 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+ name: knative-eventing
+---
 apiVersion: eventing.knative.dev/v1alpha1
 kind: KnativeEventing
 metadata:
   name: knative-eventing
-  namespace: user1-cloudnativeapps
+  namespace: knative-eventing
 spec: {}

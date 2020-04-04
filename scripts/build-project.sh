@@ -1,11 +1,9 @@
 #!/bin/bash
 
-SCRIPT_DIR=$(dirname $0)
-DEMO_HOME="$SCRIPT_DIR/.."
+if [[ -z "$DEMO_HOME" ]]; then
+    echo "Must first set DEMO_HOME environment variable before running this script."
+fi
 
-# turn demohome to absolute path
-cd $DEMO_HOME
-DEMO_HOME=`pwd`
 
 BUILD_PROJECTS=( \
     inventory \
