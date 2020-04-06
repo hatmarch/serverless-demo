@@ -22,7 +22,26 @@ while (( $# )); do
     esac
 done
 
-oc new-project $PROJECT
+oc get ns $PROJECT 2>/dev/null  || { 
+    oc new-project $PROJECT 
+}
+
+command.wait_for_crd()
+{
+    local CRD=$1
+    local PROJECT=$(oc project -q)
+    if [[ "${2:-}" ]]; then
+        # set to the project passed in
+        PROJECT=$2
+    fi
+
+    # Wait for the CRD to appear
+    CRD="crd/kafkas.kafka.strimzi.io"
+    while [ -z "$(oc get $CRD 2>/dev/null)" ]; do
+        sleep 1
+    done 
+    oc wait --for=condition=Established $CRD --timeout=6m -n $PROJECT
+}
 
 #
 # Subscribe to Operators
@@ -48,9 +67,10 @@ fi
 # Install Kafka Instances
 #
 
+# FIXME: Need to either wait or find a way for this not to fail whilst waiting for the CRD to even be setup
 # make sure CRD is available before adding CRs
 echo "Waiting for the operator to install the Kafka CRDs"
-oc wait --for=condition=Established crd/kafkas.kafka.strimzi.io --timeout=6m
+command.wait_for_crd "crd/kafkas.kafka.strimzi.io"
 
 # install the necessary kafka instance and topics
 oc apply -f $DEMO_HOME/install/kafka/kafka.yaml -n $PROJECT
@@ -62,23 +82,23 @@ oc apply -f $DEMO_HOME/install/kafka/kafka-payment-topic.yaml -n $PROJECT
 #
 
 echo "Waiting for the operator to install the Knative CRDs"
-oc wait --for=condition=Established crd/knativeservings.operator.knative.dev --timeout=6m
+command.wait_for_crd "crd/knativeservings.operator.knative.dev"
 
 oc apply -f "$DEMO_HOME/install/serverless/cr.yaml"
 
 echo "Waiting for the knative serving instance to finish installing"
-oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeout=6m -n knative-serving
+command.wait_for_crd "knativeserving/knative-serving" knative-serving
 
 #
 # Install Knative Eventing
 #
 echo "Waiting for the operator to install the Knative Event CRD"
-oc wait --for=condition=Established crd/knativeservings.operator.knative.dev --timeout=6m
-# 
+command.wait_for_crd "crd/knativeservings.operator.knative.dev"
+
 
 oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
 echo "Waiting for the knative eventing instance to finish installing"
-oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing
+command.wait_for_crd "knativeeventing/knative-eventing" knative-eventing
 
 #
 #
