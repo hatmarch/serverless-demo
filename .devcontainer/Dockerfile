@@ -21,4 +21,7 @@ RUN curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o 
     unzip awscliv2.zip && ./aws/install && rm awscliv2.zip && rm -rf ./aws \
     # && ln -s /usr/local/bin/aws2 /usr/local/bin/aws
 
+# for htpasswd support
+RUN yum -y install httpd-tools-2.4.37-16.module+el8.1.0+4134+e6bad0ed.x86_64
+
 USER jboss
