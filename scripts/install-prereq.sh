@@ -36,7 +36,6 @@ command.wait_for_crd()
     fi
 
     # Wait for the CRD to appear
-    CRD="crd/kafkas.kafka.strimzi.io"
     while [ -z "$(oc get $CRD 2>/dev/null)" ]; do
         sleep 1
     done 
@@ -87,7 +86,7 @@ command.wait_for_crd "crd/knativeservings.operator.knative.dev"
 oc apply -f "$DEMO_HOME/install/serverless/cr.yaml"
 
 echo "Waiting for the knative serving instance to finish installing"
-command.wait_for_crd "knativeserving/knative-serving" knative-serving
+oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeout=6m -n knative-serving
 
 #
 # Install Knative Eventing
@@ -98,7 +97,7 @@ command.wait_for_crd "crd/knativeservings.operator.knative.dev"
 
 oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
 echo "Waiting for the knative eventing instance to finish installing"
-command.wait_for_crd "knativeeventing/knative-eventing" knative-eventing
+oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing
 
 #
 #
