@@ -16,6 +16,7 @@ SECRET_NAME=$(oc get OAuth/cluster -o jsonpath='{.spec.identityProviders[0].htpa
 oc get secret $SECRET_NAME -n openshift-config -o jsonpath="{.data.$FILENAME}" | base64 --decode > $FILENAME
 
 # add to it with desired user
+echo "" >> $FILENAME
 htpasswd -Bb $FILENAME $NEW_ADMIN "$PASS"
 
 # replace the secret
