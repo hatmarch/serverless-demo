@@ -1,0 +1,15 @@
+POST http://payment-user1-cloudnativeapps.apps-crc.testing/
+Content-Type: application/json
+
+{
+    "orderId": "12321",
+    "total": "232.23", 
+    "creditCard": 
+        {"number":"4232454678667866",
+        "expiration": "04/22",
+        "nameOnCard": "Jane G Doe"}, 
+    "billingAddress": "123 Anystreet, Pueblo, CO 32213", 
+    "name": "Jane Doe"
+}
+
+curl -i -H 'Content-Type: application/json' -X POST -d'{"orderId": "12321","total": "232.23", "creditCard": {"number":"4232454678667866","expiration": "04/22","nameOnCard": "Jane G Doe"}, "billingAddress": "123 Anystreet, Pueblo, CO 32213", "name": "Jane Doe"}'  http://payment-user1-cloudnativeapps.apps-crc.testing/

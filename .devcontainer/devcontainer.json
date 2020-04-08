@@ -6,7 +6,8 @@
 		"redhat.vscode-xml",
 		"joaompinto.asciidoctor-vscode",
 		"redhat.vscode-quarkus",
-		"ggrebert.quarkus-snippets"
+		"ggrebert.quarkus-snippets",
+		"humao.rest-client"
 	],
 	"settings":{
 		"java.home": "/usr/lib/jvm/java-1.8.0-openjdk"
