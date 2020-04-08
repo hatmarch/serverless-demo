@@ -65,7 +65,7 @@ else
 fi
 
 # install the kafka knative eventing operator
-if [[ -z "$SKIP_KAFKA_EVENTING" && -z "$FOR_CRC" ]]; then
+if [-z "$SKIP_KAFKA_EVENTING" ]; then
     oc apply -f "$DEMO_HOME/install/kafka-eventing/subscription.yaml"
 else
     echo "SKIPPING installation of kafka eventing at user's request."
@@ -106,10 +106,9 @@ oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeou
 #
 # Install Knative Eventing
 #
-if [[ -z "$SKIP_KAFKA_EVENTING" && -z "$FOR_CRC" ]]; then
+if [ -z "$SKIP_KAFKA_EVENTING" ]; then
     echo "Waiting for the operator to install the Knative Event CRD"
     command.wait_for_crd "crd/knativeservings.operator.knative.dev"
-
 
     oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
     echo "Waiting for the knative eventing instance to finish installing"
