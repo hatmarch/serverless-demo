@@ -3,12 +3,17 @@
 set -e -u -o pipefail
 
 declare SKIP_KAFKA_EVENTING=""
+declare FOR_CRC=""
 declare PROJECT="user1-cloudnativeapps"
 
 while (( $# )); do
     case "$1" in
         --skip-knative-kafka-eventing)
             SKIP_KAFKA_EVENTING="true"
+            shift
+            ;;
+        --crc)
+            FOR_CRC="true"
             shift
             ;;
         -*|--*)
@@ -47,16 +52,20 @@ command.wait_for_crd()
 #
 
 # install the kafka operator (AMQStreams)
-oc apply -f "$DEMO_HOME/install/kafka/subscription.yaml"
+oc apply -f "$DEMO_HOME/install/kafka/subscription.yaml" 
 
 # install the serverless operator
 oc apply -f "$DEMO_HOME/install/serverless/subscription.yaml" 
 
-# install the knative eventing operator
-oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
+if [ -z "$FOR_CRC" ]; then
+    # install the knative eventing operator
+    oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
+else
+    echo "CRC instance, skipping knative eventing operator"
+fi
 
 # install the kafka knative eventing operator
-if [[ -z "$SKIP_KAFKA_EVENTING" ]]; then
+if [[ -z "$SKIP_KAFKA_EVENTING" && -z "$FOR_CRC" ]]; then
     oc apply -f "$DEMO_HOME/install/kafka-eventing/subscription.yaml"
 else
     echo "SKIPPING installation of kafka eventing at user's request."
@@ -66,15 +75,21 @@ fi
 # Install Kafka Instances
 #
 
-# FIXME: Need to either wait or find a way for this not to fail whilst waiting for the CRD to even be setup
 # make sure CRD is available before adding CRs
 echo "Waiting for the operator to install the Kafka CRDs"
 command.wait_for_crd "crd/kafkas.kafka.strimzi.io"
 
+if [ -z "$FOR_CRC" ]; then
+    # use the default parameter values
+    oc process -f "$DEMO_HOME/install/kafka/kafka-template.yaml" | oc apply -f -
+else
+    # install lighter weight cluster on CRC
+    oc process -f "$DEMO_HOME/install/kafka/kafka-template.yaml" -p REPLICA_COUNT=1 -p MIN_ISR=1 | oc apply -f -
+fi
+
 # install the necessary kafka instance and topics
-oc apply -f $DEMO_HOME/install/kafka/kafka.yaml -n $PROJECT
-oc apply -f $DEMO_HOME/install/kafka/kafka-order-topic.yaml -n $PROJECT
-oc apply -f $DEMO_HOME/install/kafka/kafka-payment-topic.yaml -n $PROJECT
+oc apply -f "$DEMO_HOME/install/kafka/kafka-order-topic.yaml" -n $PROJECT
+oc apply -f "$DEMO_HOME/install/kafka/kafka-payment-topic.yaml" -n $PROJECT
 
 #
 # Install Serving
@@ -91,23 +106,21 @@ oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeou
 #
 # Install Knative Eventing
 #
-echo "Waiting for the operator to install the Knative Event CRD"
-command.wait_for_crd "crd/knativeservings.operator.knative.dev"
+if [[ -z "$SKIP_KAFKA_EVENTING" && -z "$FOR_CRC" ]]; then
+    echo "Waiting for the operator to install the Knative Event CRD"
+    command.wait_for_crd "crd/knativeservings.operator.knative.dev"
 
 
-oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
-echo "Waiting for the knative eventing instance to finish installing"
-oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing
-
-#
-#
-#
+    oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
+    echo "Waiting for the knative eventing instance to finish installing"
+    oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing
+fi
 
 #
 # Ensure Kafka cluster is ready
 #
+
 # wait until the cluster is deployed
 echo "Waiting up to 30 minutes for kafka cluster to be ready"
 oc wait --for=condition=Ready kafka/my-cluster --timeout=30m -n $PROJECT
 echo "Kafka cluster is ready."
-
