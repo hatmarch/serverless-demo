@@ -62,13 +62,13 @@ image:developer-payment-alone.png[]
 +
 . Next demonstrate how the payment service currently interacts with the kafka queues by setting up two windows
 +
-.. _Terminal Window 2_ Run the following command to watch the payments:
+.. *Terminal Window 2* Run the following command to watch the payments:
 +
 ----
 oc exec -c kafka my-cluster-kafka-0 -n user1-cloudnativeapps -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments --from-beginning
 ----
 +
-.. _Terminal Window 1_ Run the following command to simulate an order being placed by the coolstore
+.. *Terminal Window 1* Run the following command to simulate an order being placed by the coolstore
 +
 ----
 cat $DEMO_HOME/example/order-payload.json | oc exec -i -c kafka my-cluster-kafka-0 -n user1-cloudnativeapps -- /opt/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic orders
@@ -249,6 +249,63 @@ NAME      URL                                                                   
 payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
 ----
 ====
+
+=== Trigger Knative Service with Kafka Event
+
+Now we want to use events the order topic to be our *source* (see also link:https://knative.dev/docs/eventing/samples/kafka/source/index.html[here] for generic example) and use the payment service as our *sink*
+
+[NOTE]
+====
+First we need to install the Kafka knative event source operator as seen below.  Go to link:demo-setup.adoc[here] for more details
+
+image:kafka-event-operator.png[]
+====
+
+. Create an instance of kakfa eventing for our namespace.  To do this call
++
+----
+$ oc apply -f $DEMO_HOME/install/kafka-eventing/kafka-eventing.yaml 
+knativeeventingkafka.eventing.knative.dev/knative-eventing-kafka created
+
+$ oc wait --for=condition=InstallSucceeded KnativeEventingKafka knative-eventing-kafka
+----
++
+.. When the command completes, the following pods will be able to be seen (with the following command):
++
+----
+$ watch "oc get pods | grep -i ^kafka"
+
+kafka-ch-controller-5f6b47c9fc-7xh8t          0/1     ContainerCreating   0          20m
+kafka-ch-dispatcher-5fc59bdf5b-hnt6h          0/1     ContainerCreating   0          20m
+kafka-controller-manager-0                    1/1     Running             0          4m25s
+kafka-webhook-74d6d5cd-gc4p5                  0/1     ContainerCreating   0          20m
+----
++
+. Then use the yaml file to bind the kafka event source to the payment service sink (show what's going on first)
++
+image:kafka-event-source.png[]
++
+----
+oc apply -f $DEMO_HOME/payment-service/knative/kafka-event-source.yaml 
+----
++
+. Check to make source the event source is running
++
+----
+$ oc get pods -l knative-eventing-source-name=kafka-source
+----
++
+. Demonstrate event driven serverless
++
+.. Make sure the _Developer Perspective_ can be seen
+.. Have *Terminal Window 2* up showing what gets written to the payment queue
+.. In *Terminal Window 1* run the following command to simulate an order coming in from the order service
++
+----
+cat $DEMO_HOME/example/order-payload.json | oc exec -i -c kafka my-cluster-kafka-0 -n user1-cloudnativeapps -- /opt/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic orders
+----
++
+.. Show that the service gets spun up and show the results of the processing in the payment queue
 
 == Knative payment on full cluster (integration with website) 
 
@@ -551,6 +608,8 @@ Now we need to create an instance of kakfa eventing for our namespace.  To do th
 ----
 $ oc apply -f $DEMO_HOME/install/kafka-eventing/kafka-eventing.yaml 
 knativeeventingkafka.eventing.knative.dev/knative-eventing-kafka created
+
+$ oc wait --for=condition=InstallSucceeded KnativeEventingKafka knative-eventing-kafka
 ----
 
 Then wait until all the kafka pods are created.  Use the following watch command and look for output like this
