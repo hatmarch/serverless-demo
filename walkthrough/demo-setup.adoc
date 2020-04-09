@@ -33,6 +33,7 @@ $DEMO_HOME/scripts/install-prereq.sh
 . Check that everything is installed correctly:
 +
 Kafka is installed correctly once you see the following pods
++
 ----
 my-cluster-kafka-0                                    2/2     Running     0          94s
 my-cluster-kafka-1                                    2/2     Running     0          94s
