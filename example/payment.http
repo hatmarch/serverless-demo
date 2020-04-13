@@ -1,4 +1,5 @@
-POST http://payment.user1-cloudnativeapps.apps-crc.testing
+# POST http://payment.user1-cloudnativeapps.apps-crc.testing
+POST http://payment.user1-cloudnativeapps.apps.cluster-knative-5803.knative-5803.example.opentlc.com
 Content-Type: application/json
 
 {
@@ -13,3 +14,8 @@ Content-Type: application/json
 }
 
 curl -i -H 'Content-Type: application/json' -X POST -d'{"orderId": "12321","total": "232.23", "creditCard": {"number":"4232454678667866","expiration": "04/22","nameOnCard": "Jane G Doe"}, "billingAddress": "123 Anystreet, Pueblo, CO 32213", "name": "Jane Doe"}'  http://payment-user1-cloudnativeapps.apps-crc.testing/
+
+# NOTE: hey doesn't read any more parameters after the URL that is meant to be invoked
+# with -c this is the number of requests that are outstanding at a time.  This controls the numbers of containers you should see when there is a concurrency limit
+# number of containers is -c/<concurrency-limit>
+hey -c 10 -z 15s -m POST -D example/order-payload.json -T "application/json" http://payment.user1-cloudnativeapps.apps.cluster-knative-5803.knative-5803.example.opentlc.com
