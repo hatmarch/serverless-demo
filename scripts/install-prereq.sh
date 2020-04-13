@@ -57,15 +57,11 @@ oc apply -f "$DEMO_HOME/install/kafka/subscription.yaml"
 # install the serverless operator
 oc apply -f "$DEMO_HOME/install/serverless/subscription.yaml" 
 
-if [ -z "$FOR_CRC" ]; then
-    # install the knative eventing operator
-    oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
-else
-    echo "CRC instance, skipping knative eventing operator"
-fi
+# install the knative eventing operator
+oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
 
 # install the kafka knative eventing operator
-if [-z "$SKIP_KAFKA_EVENTING" ]; then
+if [ -z "$SKIP_KAFKA_EVENTING" ]; then
     oc apply -f "$DEMO_HOME/install/kafka-eventing/subscription.yaml"
 else
     echo "SKIPPING installation of kafka eventing at user's request."
@@ -106,13 +102,18 @@ oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeou
 #
 # Install Knative Eventing
 #
-if [ -z "$SKIP_KAFKA_EVENTING" ]; then
-    echo "Waiting for the operator to install the Knative Event CRD"
-    command.wait_for_crd "crd/knativeservings.operator.knative.dev"
+echo "Waiting for the operator to install the Knative Event CRD"
+command.wait_for_crd "crd/knativeeventings.eventing.knative.dev"
 
-    oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
-    echo "Waiting for the knative eventing instance to finish installing"
-    oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing
+oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
+echo "Waiting for the knative eventing instance to finish installing"
+oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing
+
+if [ -z "$SKIP_KAFKA_EVENTING" ]; then
+    # This where kafka eventing would be installed
+    echo "NOTE: This is where the kafka eventing should be installed, but this functionality is not currently implemented"
+else
+    echo "Skipping Kafka Eventing at the user's request"
 fi
 
 #
