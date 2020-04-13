@@ -1,9 +1,9 @@
 #!/bin/bash
 
-set -o -u -e pipefail
+set -e -u -o pipefail
 
 # Install a local image of the builder that we'll use for the payment service
-oc import-image openjdk18-openshift:1.5 --from=registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift:1.5
+oc import-image openjdk18-openshift:1.5 --from=registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift:1.5 --confirm
 
 # install an initial version of the payment service
 oc apply -f $DEMO_HOME/install/payment-alone.yaml
