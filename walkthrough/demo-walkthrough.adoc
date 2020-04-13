@@ -65,7 +65,7 @@ image:developer-payment-alone.png[]
 .. *Terminal Window 2* Run the following command to watch the payments:
 +
 ----
-oc exec -c kafka my-cluster-kafka-0 -n user1-cloudnativeapps -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments --from-beginning
+oc exec -c kafka my-cluster-kafka-0 -n user1-cloudnativeapps -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
 ----
 +
 .. *Terminal Window 1* Run the following command to simulate an order being placed by the coolstore
@@ -108,10 +108,10 @@ export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSi
 mvn clean package -DskipTests
 ----
 +
-. And remotely (to upload the binary and bake it into a new image)
+. And remotely (to upload the binary and bake it into a new image).  [blue]#NOTE: This should take about 1.5 minutes with crc cluster#
 +
 ----
-oc start-build payment --from-file target/*-runner.jar --follow
+oc start-build payment --from-file target/*-runner.jar --follow 
 ----
 +
 ** When the build is done, notice that there is a new image in the image registry (reached from the _Administrator Perspective_ under _Builds > ImageStreams_):
@@ -165,7 +165,7 @@ image:knative-developer.png[]
 +
 image:payment-restclient.png[]
 +
-.. Switch quicker to the _Developer Perspective_ to show the service spinning up
+.. Switch quickly to the _Developer Perspective_ to show the service spinning up
 +
 image:payment-spin-up.png[]
 +
@@ -185,7 +185,7 @@ cd $DEMO_HOME/payment-service
 mvn package -DskipTests
 ----
 +
-. When the compilation is done, upload the binary to make a new image
+. When the compilation is done, upload the binary to make a new image ([blue]#NOTE: This should take about 1.5 minutes with crc cluster)#
 +
 ----
 oc start-build payment --from-file target/*-runner.jar --follow
@@ -275,10 +275,9 @@ $ oc wait --for=condition=InstallSucceeded KnativeEventingKafka knative-eventing
 ----
 $ watch "oc get pods | grep -i ^kafka"
 
-kafka-ch-controller-5f6b47c9fc-7xh8t          0/1     ContainerCreating   0          20m
-kafka-ch-dispatcher-5fc59bdf5b-hnt6h          0/1     ContainerCreating   0          20m
-kafka-controller-manager-0                    1/1     Running             0          4m25s
-kafka-webhook-74d6d5cd-gc4p5                  0/1     ContainerCreating   0          20m
+kafka-ch-controller-57cf94b477-dk9ss          1/1     Running     0          73s
+kafka-controller-manager-56d58bb444-dtpkd     1/1     Running     0          81s
+kafka-webhook-77b75f7c7f-df7vb                1/1     Running     0          72s
 ----
 +
 . Then use the yaml file to bind the kafka event source to the payment service sink (show what's going on first)
