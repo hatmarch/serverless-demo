@@ -4,7 +4,6 @@ metadata:
   name: order
   labels:
     strimzi.io/cluster: my-cluster
-  namespace: user1-cloudnativeapps
 spec:
   partitions: 10
   replicas: 3
