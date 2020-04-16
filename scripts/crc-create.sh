@@ -24,6 +24,7 @@ done
 
 if [ -z "$FILE" ]; then
     echo "Need to path to pull secret file"
+    exit 1
 fi
 
 # configure the crc
