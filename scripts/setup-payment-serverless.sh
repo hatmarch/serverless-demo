@@ -11,7 +11,7 @@ oc new-build  --image-stream="openshift/redhat-openjdk18-openshift:1.5" --binary
 
 # build our local payment service
 ORIG_DIR=$(pwd -P)
-cd $DEMO_HOME/payment
+cd $DEMO_HOME/payment-service
 mvn package -DskipTests
 
 # upload our payment jar that we compiled.
