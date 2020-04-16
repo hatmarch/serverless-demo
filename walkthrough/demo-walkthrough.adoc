@@ -310,43 +310,26 @@ cat $DEMO_HOME/example/order-payload.json | oc exec -i -c kafka my-cluster-kafka
 
 === Install the coolstore project 
 
-[red]#FIXME: This probably should be moved into the setup instructions#
+WARNING: You will need to log into a real OpenShift cluster to run the coolstore website.  The requirements are too heavy to run it with crc (as of verion 1.8)
 
-Apply the template after the kafka queues are setup
-
+. Locally log into the cluster with `oc login` command
+. Setup local environment
++
 ----
-oc project user1-cloudnativeapps
-oc apply -f $DEMO_HOME/install/cool-store-pre-serverless.yaml
+source scripts/shell-setup.sh
 ----
-
-After the template has been applied, then run the fix-up script on the installation
-
++
+. Run the coolstore setup script. NOTE: You can cause cluster side rebuilds of all the components (instead of updating images to point to dockerhub) by using the `--rebuild` flag
++
 ----
-$DEMO_HOME/scripts/template-fix.sh
+$DEMO_HOME/scripts/install-coolstore.sh -p coolstore
 ----
-
-[red]#When running in crc, you might want to wait for all the dcs to register as available before moving on to the next step.  DCs to consider at this stage are: catalog-database, datagrid-service, inventory-database, order-database, 
-
-Build Every Project by running the script below.  This will first build all the projects locally in parallel and when they have all completed it will build them remotely to openshift in parallel.
-
-[NOTE]
-.Before building, first you can try...
-====
-updating image stream to point to external tags without a build
++
+. It will take a little while for all the pods to be deployed (and images downloaded)
+. Test the deployment by getting the route
++
 ----
-$DEMO_HOME/scripts/image-stream-setup.sh
-----
-
-Look out for errors like this that seem to result if the tag command has not been able to yet pull the image from docker
-----
-error: "payment:initial-build" is not currently pointing to an image, cannot use it as the source of a tag
-----
-
-If this happens, then attempt to run the image stream setup again.
-====
-
-----
-./scripts/build-project.sh
+echo "http://$(oc get route coolstore-ui -o jsonpath='{.spec.host}')/"
 ----
 
 [NOTE]
