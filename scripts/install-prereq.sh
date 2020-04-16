@@ -111,7 +111,7 @@ oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n kna
 
 if [ -z "$SKIP_KAFKA_EVENTING" ]; then
     # This where kafka eventing would be installed
-    echo "NOTE: This is where the kafka eventing should be installed, but this functionality is not currently implemented"
+    oc apply -f "$DEMO_HOME/install/kafka-eventing/kafka-eventing.yaml"
 else
     echo "Skipping Kafka Eventing at the user's request"
 fi
