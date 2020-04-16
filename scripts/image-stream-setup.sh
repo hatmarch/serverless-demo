@@ -1,5 +1,4 @@
 #!/bin/bash
-oc tag --source docker mhildema/payment:v1 payment:initial-build
 oc tag --source docker mhildema/cart:v1 cart:initial-build
 oc tag --source docker mhildema/coolstore-ui:v1 coolstore-ui:initial-build
 oc tag --source docker mhildema/inventory:v1 inventory:initial-build
@@ -10,8 +9,7 @@ oc tag --source docker mhildema/order:v1 order:initial-build
 # tagging of latest will fail (which in turn will cause deployment to fail)
 sleep 5
 
-# Now trigger builds by setting the latest tag in the image stream (which the DeploymentConfigs should be keyed to)
-oc tag payment:initial-build payment:latest
+# Now trigger Deployments by setting the latest tag in the image stream (which the DeploymentConfigs should be keyed to)
 oc tag cart:initial-build cart:latest
 oc tag coolstore-ui:initial-build coolstore-ui:latest
 oc tag inventory:initial-build inventory:latest

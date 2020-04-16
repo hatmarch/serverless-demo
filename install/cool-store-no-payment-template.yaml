@@ -1,0 +1,1217 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: kafka-instance-template
+  annotations:
+    description: "Template for the creation of a Kafka cluster"
+parameters:
+- description: The name of the project
+  displayName: Name of the project
+  name: PROJECT
+  value: "coolstore"
+  required: true
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T08:31:14Z"
+    labels:
+      app: cart
+    name: cart
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    selector:
+      app: cart
+      deploymentconfig: cart
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T06:36:36Z"
+    labels:
+      app: catalog
+    name: catalog
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    selector:
+      app: catalog
+      deploymentconfig: catalog
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    labels:
+      app: catalog-database
+    name: catalog-database
+  spec:
+    ports:
+    - name: 5432-tcp
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      app: catalog-database
+      deploymentconfig: catalog-database
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      nodeshift/git-branch: master
+      nodeshift/git-commit: 149f1045bdf09b6109c60dfe5292e42722e91b3b
+    creationTimestamp: "2019-11-19T12:02:13Z"
+    labels:
+      project: coolstore-ui
+      provider: nodeshift
+      version: 1.0.0
+    name: coolstore-ui
+  spec:
+    ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      project: coolstore-ui
+      provider: nodeshift
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T06:40:45Z"
+    labels:
+      app: datagrid-service
+    name: datagrid-service
+  spec:
+    ports:
+    - name: 7600-tcp
+      port: 7600
+      protocol: TCP
+      targetPort: 7600
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8181-tcp
+      port: 8181
+      protocol: TCP
+      targetPort: 8181
+    - name: 8888-tcp
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
+    - name: 9990-tcp
+      port: 9990
+      protocol: TCP
+      targetPort: 9990
+    - name: 11211-tcp
+      port: 11211
+      protocol: TCP
+      targetPort: 11211
+    - name: 11222-tcp
+      port: 11222
+      protocol: TCP
+      targetPort: 11222
+    - name: 57600-tcp
+      port: 57600
+      protocol: TCP
+      targetPort: 57600
+    selector:
+      app: datagrid-service
+      deploymentconfig: datagrid-service
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T06:25:51Z"
+    labels:
+      app: inventory
+    name: inventory
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    selector:
+      app: inventory
+      deploymentconfig: inventory
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T03:05:36Z"
+    labels:
+      app: inventory-database
+    name: inventory-database
+  spec:
+    ports:
+    - name: 5432-tcp
+      port: 5432
+      protocol: TCP
+      targetPort: 5432
+    selector:
+      app: inventory-database
+      deploymentconfig: inventory-database
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T11:57:38Z"
+    labels:
+      app: order
+    name: order
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    - name: 8443-tcp
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+    - name: 8778-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    selector:
+      app: order
+      deploymentconfig: order
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T11:49:44Z"
+    labels:
+      app: order-database
+    name: order-database
+  spec:
+    ports:
+    - name: 27017-tcp
+      port: 27017
+      protocol: TCP
+      targetPort: 27017
+    selector:
+      app: order-database
+      deploymentconfig: order-database
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T08:31:14Z"
+    generation: 3
+    labels:
+      app: cart
+      app.kubernetes.io/part-of: focus
+    name: cart
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: cart
+      deploymentconfig: cart
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: cart
+          deploymentconfig: cart
+      spec:
+        containers:
+        - image: image-registry.openshift-image-registry.svc:5000/${PROJECT}/cart@sha256:3543f4b2de61e6facfc4a348d974cbb9f9b4810d935a188b6af7f4e184dd0b73
+          imagePullPolicy: Always
+          name: cart
+          ports:
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - cart
+        from:
+          kind: ImageStreamTag
+          name: cart:latest
+          namespace: ${PROJECT}
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/${PROJECT}/cart@sha256:3543f4b2de61e6facfc4a348d974cbb9f9b4810d935a188b6af7f4e184dd0b73
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T06:36:36Z"
+    generation: 2
+    labels:
+      app: catalog
+      app.kubernetes.io/part-of: focus 
+    name: catalog
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: catalog
+      deploymentconfig: catalog
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: catalog
+          deploymentconfig: catalog
+      spec:
+        containers:
+        - image: image-registry.openshift-image-registry.svc:5000/${PROJECT}/catalog@sha256:9fc520a9ef6b35bf3b99c38494574392911d7dd4801f81f0208e0b879c7794ad
+          imagePullPolicy: Always
+          name: catalog
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - catalog
+        from:
+          kind: ImageStreamTag
+          name: catalog:latest
+          namespace: ${PROJECT}
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/${PROJECT}/catalog@sha256:9fc520a9ef6b35bf3b99c38494574392911d7dd4801f81f0208e0b879c7794ad
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T06:33:13Z"
+    generation: 2
+    labels:
+      app: catalog-database
+    name: catalog-database
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: catalog-database
+      deploymentconfig: catalog-database
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: catalog-database
+          deploymentconfig: catalog-database
+      spec:
+        containers:
+        - env:
+          - name: POSTGRESQL_DATABASE
+            value: catalog
+          - name: POSTGRESQL_PASSWORD
+            value: mysecretpassword
+          - name: POSTGRESQL_USER
+            value: catalog
+          image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql@sha256:a32b6e4cde1c76b97981373b408ee2e51b6be7f037db71b558bcf5469fb5bdd0
+          imagePullPolicy: IfNotPresent
+          name: catalog-database
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - catalog-database
+        from:
+          kind: ImageStreamTag
+          name: postgresql:10
+          namespace: openshift
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/openshift/postgresql@sha256:a32b6e4cde1c76b97981373b408ee2e51b6be7f037db71b558bcf5469fb5bdd0
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      nodeshift/git-branch: master
+      nodeshift/git-commit: 149f1045bdf09b6109c60dfe5292e42722e91b3b
+      app.openshift.io/connects-to: inventory,order,catalog,cart
+    creationTimestamp: "2019-11-19T12:02:13Z"
+    generation: 2
+    labels:
+      app: coolstore-ui
+      project: coolstore-ui
+      provider: nodeshift
+      version: 1.0.0
+      app.kubernetes.io/part-of: focus
+    name: coolstore-ui
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 2
+    selector:
+      app: coolstore-ui
+      project: coolstore-ui
+      provider: nodeshift
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          nodeshift/git-branch: master
+          nodeshift/git-commit: 149f1045bdf09b6109c60dfe5292e42722e91b3b
+        creationTimestamp: null
+        labels:
+          app: coolstore-ui
+          project: coolstore-ui
+          provider: nodeshift
+          version: 1.0.0
+      spec:
+        containers:
+        - image: image-registry.openshift-image-registry.svc:5000/${PROJECT}/coolstore-ui@sha256:30c3168fb06c6faa3ae2664caf775bdb2251cccb989a4d33bfcf2c71f931a2bc
+          imagePullPolicy: Always
+          name: coolstore-ui
+          env:
+          - name: OPENSHIFT_BUILD_NAMESPACE
+            value: ${PROJECT}
+          ports:
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+          resources: {}
+          securityContext:
+            privileged: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - coolstore-ui
+        from:
+          kind: ImageStreamTag
+          name: coolstore-ui:latest
+          namespace: ${PROJECT}
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/${PROJECT}/coolstore-ui@sha256:30c3168fb06c6faa3ae2664caf775bdb2251cccb989a4d33bfcf2c71f931a2bc
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T06:40:45Z"
+    generation: 2
+    labels:
+      app: datagrid-service
+    name: datagrid-service
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: datagrid-service
+      deploymentconfig: datagrid-service
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: datagrid-service
+          deploymentconfig: datagrid-service
+      spec:
+        containers:
+        - image: jboss/infinispan-server@sha256:e273ee003839cba43206f7efcf72724bdb13baef36956088a1871cb2a5278fc0
+          imagePullPolicy: IfNotPresent
+          name: datagrid-service
+          ports:
+          - containerPort: 57600
+            protocol: TCP
+          - containerPort: 7600
+            protocol: TCP
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8181
+            protocol: TCP
+          - containerPort: 8888
+            protocol: TCP
+          - containerPort: 9990
+            protocol: TCP
+          - containerPort: 11211
+            protocol: TCP
+          - containerPort: 11222
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - datagrid-service
+        from:
+          kind: ImageStreamTag
+          name: datagrid-service:10.0.0.Beta3
+          namespace: ${PROJECT}
+        lastTriggeredImage: jboss/infinispan-server@sha256:e273ee003839cba43206f7efcf72724bdb13baef36956088a1871cb2a5278fc0
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T06:25:51Z"
+    generation: 2
+    labels:
+      app: inventory
+      app.kubernetes.io/part-of: focus 
+    name: inventory
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: inventory
+      deploymentconfig: inventory
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: inventory
+          deploymentconfig: inventory
+      spec:
+        containers:
+        - env:
+          - name: QUARKUS_PROFILE
+            value: prod
+          image: image-registry.openshift-image-registry.svc:5000/${PROJECT}/inventory@sha256:dde8dd7d61da5e1b1339b7eba70aa5a7685abff7c765ee1b12a289eebeca05cc
+          imagePullPolicy: Always
+          name: inventory
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - inventory
+        from:
+          kind: ImageStreamTag
+          name: inventory:latest
+          namespace: ${PROJECT}
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/${PROJECT}/inventory@sha256:dde8dd7d61da5e1b1339b7eba70aa5a7685abff7c765ee1b12a289eebeca05cc
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T03:05:36Z"
+    generation: 2
+    labels:
+      app: inventory-database
+    name: inventory-database
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: inventory-database
+      deploymentconfig: inventory-database
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: inventory-database
+          deploymentconfig: inventory-database
+      spec:
+        containers:
+        - env:
+          - name: POSTGRESQL_DATABASE
+            value: inventory
+          - name: POSTGRESQL_PASSWORD
+            value: mysecretpassword
+          - name: POSTGRESQL_USER
+            value: inventory
+          image: image-registry.openshift-image-registry.svc:5000/openshift/postgresql@sha256:a32b6e4cde1c76b97981373b408ee2e51b6be7f037db71b558bcf5469fb5bdd0
+          imagePullPolicy: IfNotPresent
+          name: inventory-database
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - inventory-database
+        from:
+          kind: ImageStreamTag
+          name: postgresql:10
+          namespace: openshift
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/openshift/postgresql@sha256:a32b6e4cde1c76b97981373b408ee2e51b6be7f037db71b558bcf5469fb5bdd0
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T11:57:38Z"
+    generation: 3
+    labels:
+      app: order
+      app.kubernetes.io/part-of: focus
+    name: order
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: order
+      deploymentconfig: order
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: order
+          deploymentconfig: order
+      spec:
+        containers:
+        - image: image-registry.openshift-image-registry.svc:5000/${PROJECT}/order@sha256:8446636b7d526c2e93ae11a0c80201aebee67461543c2710fc58807f12cf9baf
+          imagePullPolicy: Always
+          name: order
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - order
+        from:
+          kind: ImageStreamTag
+          name: order:latest
+          namespace: ${PROJECT}
+        lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/${PROJECT}/order@sha256:8446636b7d526c2e93ae11a0c80201aebee67461543c2710fc58807f12cf9baf
+      type: ImageChange
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+    creationTimestamp: "2019-11-19T11:49:44Z"
+    generation: 2
+    labels:
+      app: order-database
+    name: order-database
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      app: order-database
+      deploymentconfig: order-database
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        annotations:
+          openshift.io/generated-by: OpenShiftNewApp
+        creationTimestamp: null
+        labels:
+          app: order-database
+          deploymentconfig: order-database
+      spec:
+        containers:
+        - image: mongo@sha256:6c66ebfb619f06fa2eac6e3ed75ca139e4146bd074de6d44d5d21731c50e13bf
+          imagePullPolicy: IfNotPresent
+          name: order-database
+          ports:
+          - containerPort: 27017
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /data/configdb
+            name: order-database-volume-1
+          - mountPath: /data/db
+            name: order-database-volume-2
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir: {}
+          name: order-database-volume-1
+        - emptyDir: {}
+          name: order-database-volume-2
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - order-database
+        from:
+          kind: ImageStreamTag
+          name: order-database:4.0
+          namespace: ${PROJECT}
+        lastTriggeredImage: mongo@sha256:6c66ebfb619f06fa2eac6e3ed75ca139e4146bd074de6d44d5d21731c50e13bf
+      type: ImageChange
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+    creationTimestamp: "2019-11-19T06:52:40Z"
+    labels:
+      app: cart
+    name: cart
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: cart:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: openjdk18-openshift:1.5
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers:
+    - github:
+        secret: rpAwt9gdX-D5k87ISiPF
+      type: GitHub
+    - generic:
+        secret: U8wA1MyUTYL3Jjx7vGzr
+      type: Generic
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+    creationTimestamp: "2019-11-19T06:34:22Z"
+    labels:
+      app: catalog
+    name: catalog
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: catalog:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: openjdk18-openshift:1.5
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers:
+    - github:
+        secret: pwyQ-aCqUj1QM2trNS_g
+      type: GitHub
+    - generic:
+        secret: PnTc0Hutb_1Mv7yrAenH
+      type: Generic
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    creationTimestamp: "2019-11-19T12:00:30Z"
+    labels:
+      project: coolstore-ui
+      provider: nodeshift
+      version: 1.0.0
+    name: coolstore-ui-s2i
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: coolstore-ui:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: DockerImage
+          name: nodeshift/centos7-s2i-nodejs:latest
+        incremental: false
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers: []
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+    creationTimestamp: "2019-11-19T03:06:33Z"
+    labels:
+      app: inventory
+    name: inventory
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: inventory:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: openjdk18-openshift:1.5
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers:
+    - github:
+        secret: mn90IxhLA5vpgmwDuaHE
+      type: GitHub
+    - generic:
+        secret: nt55Kt4amn5aBq-GFyYP
+      type: Generic
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+    creationTimestamp: "2019-11-19T11:50:34Z"
+    labels:
+      app: order
+    name: order
+  spec:
+    failedBuildsHistoryLimit: 5
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: order:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      binary: {}
+      type: Binary
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: openjdk18-openshift:1.5
+      type: Source
+    successfulBuildsHistoryLimit: 5
+    triggers:
+    - github:
+        secret: j1Qfme8-dwRO2oNPkkTP
+      type: GitHub
+    - generic:
+        secret: yK0YAEsJHShYEnGPCBOR
+      type: Generic
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: "2019-11-19T08:31:49Z"
+    labels:
+      app: cart
+    name: cart
+  spec:
+    host: cart-${PROJECT}.apps.cluster-monash-1d7a.monash-1d7a.open.redhat.com
+    port:
+      targetPort: 8080-tcp
+    subdomain: ""
+    to:
+      kind: Service
+      name: cart
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: "2019-11-19T06:37:09Z"
+    labels:
+      app: catalog
+    name: catalog
+  spec:
+    host: catalog-${PROJECT}.apps.cluster-monash-1d7a.monash-1d7a.open.redhat.com
+    port:
+      targetPort: 8080-tcp
+    subdomain: ""
+    to:
+      kind: Service
+      name: catalog
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: "2019-11-19T12:02:49Z"
+    labels:
+      project: coolstore-ui
+      provider: nodeshift
+      version: 1.0.0
+    name: coolstore-ui
+  spec:
+    host: coolstore-ui-${PROJECT}.apps.cluster-monash-1d7a.monash-1d7a.open.redhat.com
+    port:
+      targetPort: http
+    subdomain: ""
+    to:
+      kind: Service
+      name: coolstore-ui
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: "2019-11-19T06:28:13Z"
+    labels:
+      app: inventory
+    name: inventory
+  spec:
+    host: inventory-${PROJECT}.apps.cluster-monash-1d7a.monash-1d7a.open.redhat.com
+    port:
+      targetPort: 8080-tcp
+    subdomain: ""
+    to:
+      kind: Service
+      name: inventory
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/host.generated: "true"
+    creationTimestamp: "2019-11-19T11:57:47Z"
+    labels:
+      app: order
+    name: order
+  spec:
+    host: order-${PROJECT}.apps.cluster-monash-1d7a.monash-1d7a.open.redhat.com
+    port:
+      targetPort: 8080-tcp
+    subdomain: ""
+    to:
+      kind: Service
+      name: order
+      weight: 100
+    wildcardPolicy: None
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+      openshift.io/image.dockerRepositoryCheck: "2019-11-19T06:40:47Z"
+    labels:
+      app: datagrid-service
+    name: datagrid-service
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - annotations:
+        openshift.io/imported-from: jboss/infinispan-server:10.0.0.Beta3
+      from:
+        kind: DockerImage
+        name: jboss/infinispan-server:10.0.0.Beta3
+      generation: 2
+      importPolicy: {}
+      name: 10.0.0.Beta3
+      referencePolicy:
+        type: Source
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewApp
+      openshift.io/image.dockerRepositoryCheck: "2019-11-19T11:49:48Z"
+    labels:
+      app: order-database
+    name: order-database
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - annotations:
+        openshift.io/imported-from: mongo:4.0
+      from:
+        kind: DockerImage
+        name: mongo:4.0
+      generation: 2
+      importPolicy: {}
+      name: "4.0"
+      referencePolicy:
+        type: Source
