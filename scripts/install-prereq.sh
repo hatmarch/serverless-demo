@@ -3,6 +3,7 @@
 set -e -u -o pipefail
 
 declare SKIP_KAFKA_EVENTING=""
+declare SKIP_EVENTING=""
 declare FOR_CRC=""
 declare PROJECT="user1-cloudnativeapps"
 
@@ -10,6 +11,11 @@ while (( $# )); do
     case "$1" in
         --skip-knative-kafka-eventing)
             SKIP_KAFKA_EVENTING="true"
+            shift
+            ;;
+        --skip-all-eventing
+            SKIP_KAFKA_EVENTING="true"
+            SKIP_EVENTING="true"
             shift
             ;;
         --crc)
@@ -58,7 +64,11 @@ oc apply -f "$DEMO_HOME/install/kafka/subscription.yaml"
 oc apply -f "$DEMO_HOME/install/serverless/subscription.yaml" 
 
 # install the knative eventing operator
-oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
+if [ -z "$SKIP_EVENTING" ]; then
+    oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
+else
+    echo "SKIPPING installation of knative eventing at user's request"
+fi
 
 # install the kafka knative eventing operator
 if [ -z "$SKIP_KAFKA_EVENTING" ]; then
@@ -102,18 +112,22 @@ oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeou
 #
 # Install Knative Eventing
 #
-echo "Waiting for the operator to install the Knative Event CRD"
-command.wait_for_crd "crd/knativeeventings.eventing.knative.dev"
+if [ -z "$SKIP_EVENTING" ]; then
+    echo "Waiting for the operator to install the Knative Event CRD"
+    command.wait_for_crd "crd/knativeeventings.eventing.knative.dev"
 
-oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
-echo "Waiting for the knative eventing instance to finish installing"
-oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing
+    oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
+    echo "Waiting for the knative eventing instance to finish installing"
+    oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing --timeout=6m
+else
+    echo "Skipped Knative Eventing configuration at user's request"
+fi
 
 if [ -z "$SKIP_KAFKA_EVENTING" ]; then
     # This where kafka eventing would be installed
     oc apply -f "$DEMO_HOME/install/kafka-eventing/kafka-eventing.yaml"
 else
-    echo "Skipping Kafka Eventing at the user's request"
+    echo "Skipping Kafka Eventing configuration at the user's request"
 fi
 
 #
