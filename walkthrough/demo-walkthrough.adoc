@@ -51,10 +51,146 @@ image:knative-serving-cr-console.png[]
 image:knative-cr-interesting.png[]
 +
 . Click the _CREATE_ button
-. Wait for a bit and after a while, a new tab should appear in the left OpenShift drawer navigation, namely the _Serverless tab
+. Wait for a bit and after a while, a new tab should appear in the left OpenShift drawer navigation, namely the _Serverless_ tab
 . Click on the tab and show what's underneath
 +
 image:serverless-drawer.png[]
+
+=== Build and install payment service on CRC
+
+. Make sure the CRC is running and you have the appropriate login string
+. Run the following commands in a shell
++
+----
+source scripts/shell-setup.sh
+code .
+----
++
+. From a shell in VSCode, run the following to install the necessary prerequisites (NOTE the flags to the `install-prereq.sh` command.  These ensure that CRC can handle the installation)
+** `homemade-serverless` is the name of the project where we'll be running this.  You can change this name if you'd like 
++
+----
+source scripts/shell-setup.sh
+$DEMO_HOME/scripts/install-prereq.sh homemade-serverless --crc --skip-knative-kafka-eventing
+----
++
+. Next use kbd:[CMD+p] to open `cr.yaml` file 
+** Point out the timeout seconds as this will be important later
+. Then apply this in the cluster
++
+----
+oc apply -f $DEMO_HOME/install/serverless/cr.yaml
+----
++
+. When that completes, then show the payment project in the explorer window and explain that this is a simple Quarkus project 
+** Show the `pom.xml` file to show the libraries that go into compilation
+** Explain how this is connecting to kafka outgoing for integration with payment topic
++
+. Next, let's remove the aspects of the payment resource that causes it to poll the order service.  In vscode, use  to navigate to the *PaymentResource.java* file 
++
+. Append a message to the COMPLETED message so that we can tell this service from others
++
+image:payment-resource-string-change.png[]
++
+. And delete the configuration for the incoming stream. In *application.properties* , delete (or comment out) the following lines for the Incoming stream:
++
+image:payment-app-properties.png[]
++
+** Explain how this is connecting to kafka outgoing for integration with payment topic
++
+. Now rebuild the service locally
++
+----
+cd $DEMO_HOME/payment-service
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -DskipTests
+----
++
+. Now create a build configuration for OpenShift by running the following, but first:
+** Explain that this just allows us to build and create an image that we store in the cluster using OpenShift specific functionality
+** Explain that we could have just as easily built an image and pushed it up to some repository (which we'll point out later)
++
+----
+# Setup a binary based build for our quarkus instance
+oc new-build  --image-stream="openshift/redhat-openjdk18-openshift:1.5" --binary --name=payment    
+----
++
+. And remotely (to upload the binary and bake it into a new image).  [blue]#NOTE: This should take about 1.5 minutes with crc cluster#
++
+----
+oc start-build payment --from-file target/*-runner.jar --follow 
+----
++
+. When the build is done, let's tag it as our initial revision
++
+----
+oc tag payment:latest payment:initial
+----
++
+. Next, show the image stream in the cluster by shifting to the [blue]#Browser# and shift-click on the _Administrator_ perspective.
++
+. In that new tab, navigate to _Builds > ImageStreams_ and show that there is a new image in the image registry (reached from the _Administrator Perspective_ under _Builds > ImageStreams_):
++
+image:payment-latest-image.png[]
++
+. Next let's create a knative service using the image we just tagged.  We'll name the revision for the service name ({{.Service}} which will resolve to payment) and ({{.Generation}}, which should be 1)
++
+[TIP]
+.You can use the command line to quickly get the image stream
+====
+----
+oc get is payment -o jsonpath="{.status.dockerImageRepository}" -n homemade-serverless
+----
+====
++
+----
+kn service create payment --image image-registry.openshift-image-registry.svc:5000/homemade-serverless/payment:initial --revision-name "{{.Service}}-{{.Generation}}"
+
+# Which gives the output
+Creating service 'payment' in namespace 'homemade-serverless':
+
+  0.299s The Route is still working to reflect the latest desired specification.
+  1.008s Configuration "payment" is waiting for a Revision to become ready.
+ 68.597s ...
+ 69.390s Ingress has not yet been reconciled.
+ 70.223s Ready to serve.
+
+Service 'payment' created to latest revision 'payment-1' is available at URL:
+http://payment.homemade-serverless.apps-crc.testing
+----
+. COPY the returned url (you'll need it in an upcoming part) especially if you've renamed the project that you're deploying to
++
+** Show these aspects in the UI
++
+image:knative-payment-revisions.png[]
++
+** Show that the payment service is at 0 from the _Topology_ of the _Developer Perspective_
++
+image:knative-developer.png[]
++
+. Demonstrate that the service handling http requests invoking the service via curl
+.. Open a [blue]#new terminal window (Watch Window)# that can be used to watch the payments topic and run this command
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n homemade-serverless -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
++
+.. Make sure [blue]#Watch Window# is open and watching the payments topic
+.. Make sure the [blue]#Browser# window with the _Developer Perspective_ can still be clearly seen
++
+.. From the [blue]#Main shell# execute the following `curl` command
++
+----
+curl -i -H 'Content-Type: application/json' -X POST --data-binary @$DEMO_HOME/example/order-payload.json  http://payment.homemade-serverless.apps-crc.testing/
+----
++
+.. Show payment container spinning up
++
+image:payment-spin-up.png[]
++
+.. Show payment info being pushed to the queue
++
+.. Then show it scaling back down to 0
 
 
 === Install the initial payment service 
@@ -67,10 +203,11 @@ code .
 ----
 +
 . From a shell in VSCode, run the following to install the necessary prerequisites (NOTE the `--crc` flag)
+
 +
 ----
 source scripts/shell-setup.sh
-$DEMO_HOME/scripts/install-prereq.sh --crc
+$DEMO_HOME/scripts/install-prereq.sh homemade-serverless --crc 
 ----
 +
 . When that completes, then install the payment service
