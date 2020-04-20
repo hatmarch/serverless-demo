@@ -13,7 +13,7 @@ while (( $# )); do
             SKIP_KAFKA_EVENTING="true"
             shift
             ;;
-        --skip-all-eventing
+        --skip-all-eventing)
             SKIP_KAFKA_EVENTING="true"
             SKIP_EVENTING="true"
             shift
