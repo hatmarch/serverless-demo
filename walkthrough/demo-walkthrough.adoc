@@ -71,7 +71,7 @@ code .
 +
 ----
 source scripts/shell-setup.sh
-$DEMO_HOME/scripts/install-prereq.sh homemade-serverless --crc --skip-knative-kafka-eventing
+$DEMO_HOME/scripts/install-prereq.sh homemade-serverless --crc --skip-all-eventing
 ----
 +
 . Next use kbd:[CMD+p] to open `cr.yaml` file 
