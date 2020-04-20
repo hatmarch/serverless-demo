@@ -25,6 +25,7 @@
 	],
 	"settings":{
 		"java.home": "/usr/lib/jvm/java-1.8.0-openjdk",
-		"http.proxyStrictSSL": false
+		"http.proxyStrictSSL": false,
+		"workbench.tips.enabled": false
 	}
 }
