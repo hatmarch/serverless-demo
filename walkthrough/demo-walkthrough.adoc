@@ -30,6 +30,33 @@ crc config set pull-secret-file <PATH_TO_PULL_SECRET>
 . Run `crc setup`
 . Run `crc start` and once started record the login information presented
 
+=== Optional: Show UI Installation of necessary operators
+
+For this section you will need two windows: a command line shell and the web browser (for the console)
+
+. From the console, run `crc console` which should show the OpenShift console in the running CRC instance
+** NOTE:  Make sure you have the kube admin login password handy
+. Go to _Operators > Operator Hub_
+. Search for Knative and select the OpenShift Serverless Operator
+. Select install (for all projects)
+. OPTIONAL: Search for Kafka and select the AMQ Streams operator
+. Create a new namespace called `knative-serving` and select this as the current project
+. Navigate to the _Operators > Installed Operators_ tab and wait until OpenShift Serverless is successfully copied
+. Click on the _Knative Serving_ link and then press the _Create Knative Serving_ button
++
+image:knative-serving-cr-console.png[]
++
+. A default CR YAML UI will appear. Point out some of the more interesting elements of the CR (as well as the help on the right side of the screen)
++
+image:knative-cr-interesting.png[]
++
+. Click the _CREATE_ button
+. Wait for a bit and after a while, a new tab should appear in the left OpenShift drawer navigation, namely the _Serverless tab
+. Click on the tab and show what's underneath
++
+image:serverless-drawer.png[]
+
+
 === Install the initial payment service 
 
 . Run the following commands in a shell
