@@ -58,6 +58,8 @@ image:serverless-drawer.png[]
 
 === Build and install payment service on CRC
 
+==== Build Payment
+
 . Make sure the CRC is running and you have the appropriate login string
 . Run the following commands in a shell
 +
@@ -132,8 +134,16 @@ oc tag payment:latest payment:initial
 . In that new tab, navigate to _Builds > ImageStreams_ and show that there is a new image in the image registry (reached from the _Administrator Perspective_ under _Builds > ImageStreams_):
 +
 image:payment-latest-image.png[]
+
+==== Create Knative Serverless Service
+
+. Now that we have our image tagged, let's create a knative service using that image.  
+. First mention that we're using the knative CLI kn by issuing a `kn version` command
 +
-. Next let's create a knative service using the image we just tagged.  We'll name the revision for the service name ({{.Service}} which will resolve to payment) and ({{.Generation}}, which should be 1)
+----
+kn version
+----
+. We'll name the revision for the service name ({{.Service}} which will resolve to payment) and ({{.Generation}}, which should be 1)
 +
 [TIP]
 .You can use the command line to quickly get the image stream
@@ -192,8 +202,83 @@ image:payment-spin-up.png[]
 +
 .. Then show it scaling back down to 0
 
+=== Demonstrate Knative Eventing
 
-=== Install the initial payment service 
+[WARNING]
+====
+The coolstore and Knative Eventing require more horsepower than CRC can currently provide.  For this part of the demo you will need a separate external cluster running.
+
+You can setup the coolstore by running the following commands after logging into the cluster
+----
+source scripts/shell-setup.sh
+$DEMO_HOME/scripts/install-coolstore.sh -p coolstore
+----
+
+Wait until all the components have been installed.
+====
+
+==== Demonstrate the working Coolstore (without payment)
+
+. First explain that we are now running on a separate cluster and that our coolstore with all its microservices are setup.
+. Login to the OpenShift console, switch to the `coolstore` project and select the Developer Perspective and show all the different services 
++
+image:.png[]
++
+. Demonstrate the app working.  You can find the URL like this:
+----
+oc get route coolstore-ui -n coolstore
+----
++
+**[blue]#NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload#
++
+image:add-to-cart.png[]
++
+. From the cart, checkout and then enter credit card details (any 16-digit number beginning with 4 will work)
++
+image:checkout.png[]
++
+. Now navigate to the orders page.  Notice that the order gets filed but that it *doesn't* get processed
++
+image:orders.png[]
+
+==== Add the serverless payment service
+
+Let's create a quarkus native service to handle payment and use the power of the cluster to compile this
+
+. Create a new Source 2 Image (S2I) build
++
+----
+oc new-build quay.io/quarkus/ubi-quarkus-native-s2i:19.2.0~https://github.com/hatmarch/serverless-demo.git --context-dir=payment-service --name=payment-native \
+    -e MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+oc cancel-build bc/payment-native
+oc patch bc/payment-native -p '{"spec":{"resources":{"limits":{"cpu":"4", "memory":"6Gi"}}}}'
+oc start-build bc/payment-native --follow
+----
++
+** Discuss that we're updating the build command to have more omph for building the native service
+** whilst the command is running explain the different aspects of the command such as the builder image and the git repo reference
++
+. Once the build has completed, tag the resulting image
++
+----
+oc tag payment-native:latest payment:initial-native
+----
++
+. Next create a new knative payment knative service (as we did previously on the CRC instance)
++
+----
+kn service update payment --image image-registry.openshift-image-registry.svc:5000/coolstore/payment:initial --revision-name "{{.Service}}-{{.Generation}}" --concurrency-limit=2
+----
++
+. Demonstrate the the service is ready by showing the topology view
++
+image:FIXME
+
+==== Setup Knative Eventing
+
+[red]#Restart from here#
+
+=== OLD: Install the initial payment service 
 
 . Run the following commands in a shell
 +
@@ -268,7 +353,8 @@ image:payment-app-properties.png[]
 +
 ----
 cd $DEMO_HOME/payment-service
-export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M \
+  -XX:+CMSClassUnloadingEnabled"
 mvn clean package -DskipTests
 ----
 +
