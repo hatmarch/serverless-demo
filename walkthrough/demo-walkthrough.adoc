@@ -225,11 +225,12 @@ Wait until all the components have been installed.
 image:.png[]
 +
 . Demonstrate the app working.  You can find the URL like this:
++
 ----
 oc get route coolstore-ui -n coolstore
 ----
 +
-**[blue]#NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload#
+** [blue]#NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload#
 +
 image:add-to-cart.png[]
 +
@@ -241,7 +242,55 @@ image:checkout.png[]
 +
 image:orders.png[]
 
-==== Add the serverless payment service
+==== Create a Payment Image on Coolstore Cluster
+
+We need to find a way to get the image to our coolstore cluster.  Choose one of the following options to get it there:
+
+. <<OPTION 1: Add the serverless payment service via skopeo,Copy from Destination Cluster>>
+. <<OPTION 2: Add the serverless payment service via S2I,Build (native) image on cluster from S2I>>
+
+===== OPTION 1: Add the serverless payment service via skopeo
+
+[NOTE]
+====
+You will need to use kubernetes contexts to get this to work.  Use this command to list all the current contexts
+
+----
+oc config get-contexts
+----
+
+This will return a bunch of contexts that are defined.  You will want to find the NAME that is associated with your CRC cluster and store the whole of the name in `SRC_CLUSTER_CTX`.  Then find the remote cluster and store its NAME in `DST_CLUSTER_CTX`.  For example:
+
+----
+DEST_CLUSTER_CTX="coolstore/api-cluster-knative-5803-knative-5803-example-opentlc-com:6443/opentlc-mgr"
+SRC_CLUSTER_CTX="homemade-serverless/api-crc-testing:6443/kube:admin"
+----
+====
+
+. Get the user and token from the coolstore (remote) cluster.  Assuming you are logged into the cluster with a token on the command line then issue the following commands
+** [red]#NOTE: you can't use the password here.  It's a bearer token type login for the registry 
++
+----
+oc config use-context $SRC_CLUSTER_CTX
+SRC_CREDS="$(oc whoami):$(oc whoami -t)"
+SRC_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
+oc config use-context $DEST_CLUSTER_CTX
+DEST_CREDS="$(oc whoami):$(oc whoami -t)"
+DEST_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
+----
++
+. Next issue the `skopeo` command to copy the image from the src clusters image stream to the destination.
+** NOTE: If there is difficulty, you can add a `--debug` just before the `copy` subcommand to see what's going on.  For instance, you may need to add a `src-` or `dest-` `tls-verify=false`
++
+----
+skopeo copy --src-creds ${SRC_CREDS} --dest-creds ${DEST_CREDS} docker://${SRC_REPO}/homemade-serverless/payment:initial docker://${DEST_REPO}/coolstore/payment:initial
+----
++
+. Once the command completes, you should be able to navigate to the _Image Stream_ tab of the `coolstore` project in the destination cluster and see the image there
++
+image:imagestream-payment-dest.png[]
+
+===== OPTION 2: Add the serverless payment service via S2I
 
 Let's create a quarkus native service to handle payment and use the power of the cluster to compile this
 
@@ -264,17 +313,24 @@ oc start-build bc/payment-native --follow
 oc tag payment-native:latest payment:initial-native
 ----
 +
+. You should now be able to see the image in the _ImageStream_ for payment in the `coolstore`
+
+==== Create Payment Knative Service
+
+Once you have a `payment:initial` image in the `coolstore` we need to add the service
+
 . Next create a new knative payment knative service (as we did previously on the CRC instance)
 +
 ----
 kn service update payment --image image-registry.openshift-image-registry.svc:5000/coolstore/payment:initial --revision-name "{{.Service}}-{{.Generation}}" --concurrency-limit=2
 ----
 +
-. Demonstrate the the service is ready by showing the topology view
+. Demonstrate the the service is ready (and dormant) by showing the topology view
 +
-image:FIXME
+image:topology-coolstore-payment.png[]
 
 ==== Setup Knative Eventing
+
 
 [red]#Restart from here#
 
