@@ -9,3 +9,4 @@ target/
 coolstore-ui/tmp
 
 .vscode
+docker-secrets/
