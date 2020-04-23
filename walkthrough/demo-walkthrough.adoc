@@ -202,7 +202,7 @@ image:payment-spin-up.png[]
 +
 .. Then show it scaling back down to 0
 
-=== Demonstrate Knative Eventing
+== Demonstrate Knative Eventing (Remote Cluster)
 
 [WARNING]
 ====
@@ -217,14 +217,42 @@ $DEMO_HOME/scripts/install-coolstore.sh -p coolstore
 Wait until all the components have been installed.
 ====
 
-==== Demonstrate the working Coolstore (without payment)
+[red]#When you login to this cluster, be sure to record the context as remote by using this command#
+----
+oc config rename-context $(oc config current-context) remote-context
+----
+
+=== Screen and Window Setup
+
+==== Screen 1
+
+Here are how the windows should be laid out on Screen 1
+
+. [blue]#Topology View#: A browser window with the _TopologyView_ of the _Developer Perspective_ open
+. [blue]#Watch Window#: A new terminal windowthat can be used to watch the payments topic and runs this command:
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n coolstore -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
++
+. [blue]#Coolstore#: A browser window that has the coolstore open so that an order can be placed
+. Your windows should look something like this:
++
+image:recommended-layout.png[]
+
+==== Screen 2
+
+On the other screen you should have a full screen view of VSCode, which you started from the `code .` command run from the _$DEMO_HOME_ directory.
+
+=== Demonstrate the working Coolstore (without payment)
 
 . First explain that we are now running on a separate cluster and that our coolstore with all its microservices are setup.
 . Login to the OpenShift console, switch to the `coolstore` project and select the Developer Perspective and show all the different services 
 +
 image:.png[]
 +
-. Demonstrate the app working.  You can find the URL like this:
+. Demonstrate the coolstore site working by kbd:[SHIFT] clicking the launcher icon on the Developer Perspective (see previous) and moving the newly opened window to the right 
+** NOTE: you can also find the URL like this:
 +
 ----
 oc get route coolstore-ui -n coolstore
@@ -242,7 +270,54 @@ image:checkout.png[]
 +
 image:orders.png[]
 
-==== Create a Payment Image on Coolstore Cluster
+=== Setup Knative Eventing
+
+Now we want to use events the order topic to be our *source* (see also link:https://knative.dev/docs/eventing/samples/kafka/source/index.html[here] for generic example) and use the payment service as our *sink*
+
+[WARNING]
+====
+The setup script should have handled this when setting up the coolstore project, but the Knative Eventing and Knative Kafka Eventing Operators should be installed on the cluster.  A good way to check this is to run this command in the `coolstore` project
+
+----
+oc get pods | grep -i ^kafka
+----
+
+You should see the following:
+----
+kafka-ch-controller-57cf94b477-dk9ss          1/1     Running     0          73s
+kafka-controller-manager-56d58bb444-dtpkd     1/1     Running     0          81s
+kafka-webhook-77b75f7c7f-df7vb                1/1     Running     0          72s
+----
+====
+
+. Show all the installed operators
++
+image:operators-all-necessary-installed.png[]
++
+. Show the setup for the `Knative Eventing Kafka` by clicking on the highlighted link in the previous image, then clicking on the knative-eventing-kafka instance 
+** Point the "bootstrapServers" in the resulting _Overview_
++
+image:knative-eventing-kafka.png[]
++
+. Now we create a simple event binding to the kafka event *source* to the payment service *sink*.  Use kbd:[CMD + p] to quickly open the `kafka-event-source.yaml`
++
+image:kafka-event-source.png[]
++
+. Apply that source to the cluster
++
+----
+oc apply -f $DEMO_HOME/payment-service/knative/kafka-event-source.yaml 
+----
++
+. Check to see if the event source is running.  It won't be running yet since the payment *sink* does not exist yet on this cluster
++
+----
+$ oc get pods -l eventing.knative.dev/SourceName=kafka-source-orders
+----
++
+. You can also refresh the orders page on the coolstore site and show that the payment is still not processed
+
+=== Create a Payment Image on Coolstore Cluster
 
 We need to find a way to get the image to our coolstore cluster.  Choose one of the following options to get it there:
 
@@ -259,38 +334,38 @@ You will need to use kubernetes contexts to get this to work.  Use this command 
 oc config get-contexts
 ----
 
-This will return a bunch of contexts that are defined.  You will want to find the NAME that is associated with your CRC cluster and store the whole of the name in `SRC_CLUSTER_CTX`.  Then find the remote cluster and store its NAME in `DST_CLUSTER_CTX`.  For example:
+This will return a bunch of contexts that are defined.  You will want to find the NAME that is associated with your CRC cluster and store the whole of the name in `SRC_CLUSTER_CTX`.  Then find the remote cluster and store its NAME in `REMOTE_CLUSTER_CTX`.  If you marked your contexts as you logged into the different clusters this might look like this:
 
 ----
-DEST_CLUSTER_CTX="coolstore/api-cluster-knative-5803-knative-5803-example-opentlc-com:6443/opentlc-mgr"
-SRC_CLUSTER_CTX="homemade-serverless/api-crc-testing:6443/kube:admin"
+REMOTE_CLUSTER_CTX="remote-context"
+SRC_CLUSTER_CTX="crc-context"
 ----
 ====
 
 . Get the user and token from the coolstore (remote) cluster.  Assuming you are logged into the cluster with a token on the command line then issue the following commands
-** [red]#NOTE: you can't use the password here.  It's a bearer token type login for the registry 
+** [red]#NOTE: you can't use the password here.  It's a bearer token type login for the registry# 
 +
 ----
 oc config use-context $SRC_CLUSTER_CTX
 SRC_CREDS="$(oc whoami):$(oc whoami -t)"
 SRC_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
-oc config use-context $DEST_CLUSTER_CTX
-DEST_CREDS="$(oc whoami):$(oc whoami -t)"
-DEST_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
+oc config use-context $REMOTE_CLUSTER_CTX
+REMOTE_CREDS="$(oc whoami):$(oc whoami -t)"
+REMOTE_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
 ----
 +
 . Next issue the `skopeo` command to copy the image from the src clusters image stream to the destination.
 ** NOTE: If there is difficulty, you can add a `--debug` just before the `copy` subcommand to see what's going on.  For instance, you may need to add a `src-` or `dest-` `tls-verify=false`
 +
 ----
-skopeo copy --src-creds ${SRC_CREDS} --dest-creds ${DEST_CREDS} docker://${SRC_REPO}/homemade-serverless/payment:initial docker://${DEST_REPO}/coolstore/payment:initial
+skopeo copy --src-creds ${SRC_CREDS} --dest-creds ${REMOTE_CREDS} docker://${SRC_REPO}/homemade-serverless/payment:initial docker://${REMOTE_REPO}/coolstore/payment:initial
 ----
 +
 . Once the command completes, you should be able to navigate to the _Image Stream_ tab of the `coolstore` project in the destination cluster and see the image there
 +
 image:imagestream-payment-dest.png[]
 
-===== OPTION 2: Add the serverless payment service via S2I
+==== OPTION 2: Add the serverless payment service via S2I
 
 Let's create a quarkus native service to handle payment and use the power of the cluster to compile this
 
@@ -315,24 +390,46 @@ oc tag payment-native:latest payment:initial-native
 +
 . You should now be able to see the image in the _ImageStream_ for payment in the `coolstore`
 
-==== Create Payment Knative Service
+=== Create Payment Knative Service (on Remote)
 
 Once you have a `payment:initial` image in the `coolstore` we need to add the service
 
 . Next create a new knative payment knative service (as we did previously on the CRC instance)
+** NOTE: the -l flag is a label that will allow the service to show up as part of the "focus" topology
 +
 ----
-kn service update payment --image image-registry.openshift-image-registry.svc:5000/coolstore/payment:initial --revision-name "{{.Service}}-{{.Generation}}" --concurrency-limit=2
+kn service create payment --image image-registry.openshift-image-registry.svc:5000/coolstore/payment:initial --revision-name "{{.Service}}-{{.Generation}}" --concurrency-limit=2 -l app.kubernetes.io/part-of=focus 
+
 ----
 +
 . Demonstrate the the service is ready (and dormant) by showing the topology view
 +
 image:topology-coolstore-payment.png[]
++
+. Show that the `kafka-source-orders` has also spun up.  You can do this either by viewing the _Topology View_ of the _Developer Perspective_ or by issuing the following command:
++
+----
+oc get pods -l eventing.knative.dev/SourceName=kafka-source-orders
+----
++
+. You might also show that the order we had in our queue has now been processed
 
-==== Setup Knative Eventing
+=== Demonstrate event driven serverless
 
-
-[red]#Restart from here#
+. First make sure your screens are arranged as suggested in <<Screen and Window Setup,Screen and Window Setup>>
+. Next, use the coolstore site to order something
++
+image:checkout.png[]
++
+. Upon checkout you should see the payment pod spinning up to consume the order in the [blue]#Watch Window#
++
+image:consuming-kafka-queue.png[]
++
+. You can then go to the *Orders* section of the site to show that the order was consumed.  When you return to the [blue]#Topology View# the pod should be spun down (with a clear or black outline).
++
+. Attempt to make a second order before the service spins down, notice that it's processed immediate
++
+. Finally watch the topology view until the service spins down to nothing. 
 
 === OLD: Install the initial payment service 
 
