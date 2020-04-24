@@ -215,6 +215,8 @@ $DEMO_HOME/scripts/install-coolstore.sh -p coolstore
 ----
 
 Wait until all the components have been installed.
+
+_NOTE: You can cause cluster side rebuilds of all the components (instead of updating images to point to dockerhub) by using the `--rebuild` flag_
 ====
 
 [red]#When you login to this cluster, be sure to record the context as remote by using this command#
@@ -344,10 +346,11 @@ SRC_CLUSTER_CTX="crc-context"
 
 . Get the user and token from the coolstore (remote) cluster.  Assuming you are logged into the cluster with a token on the command line then issue the following commands
 ** [red]#NOTE: you can't use the password here.  It's a bearer token type login for the registry# 
+** [red]#NOTE: the default login for the crc cluster is kube:admin, but the extra `:` confuses skopeo.  Thus we need to make sure to take out that `:` with `sed` before setting it as the src username#
 +
 ----
 oc config use-context $SRC_CLUSTER_CTX
-SRC_CREDS="$(oc whoami):$(oc whoami -t)"
+SRC_CREDS="$(oc whoami | sed s/\://g):$(oc whoami -t)"
 SRC_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
 oc config use-context $REMOTE_CLUSTER_CTX
 REMOTE_CREDS="$(oc whoami):$(oc whoami -t)"
@@ -358,8 +361,25 @@ REMOTE_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpat
 ** NOTE: If there is difficulty, you can add a `--debug` just before the `copy` subcommand to see what's going on.  For instance, you may need to add a `src-` or `dest-` `tls-verify=false`
 +
 ----
-skopeo copy --src-creds ${SRC_CREDS} --dest-creds ${REMOTE_CREDS} docker://${SRC_REPO}/homemade-serverless/payment:initial docker://${REMOTE_REPO}/coolstore/payment:initial
+skopeo copy --src-creds ${SRC_CREDS} --src-tls-verify=false --dest-creds ${REMOTE_CREDS} docker://${SRC_REPO}/homemade-serverless/payment:initial docker://${REMOTE_REPO}/coolstore/payment:initial
 ----
++
+[TIP]
+====
+If the image already exists on the cluster and you want to show again copying to the cluster, then you can do the following to remove the docker image layers:
+
+. Remove any references to the image by removing image streams that point to it:
++
+----
+oc delete is payment
+----
++
+. Then, when you're sure there is nothing referencing the image in question, run this command (assuming `REMOTE_REPO` is still set from above)
++
+----
+oc adm prune images --registry-url=https://${REMOTE_REPO} --confirm
+----
+====
 +
 . Once the command completes, you should be able to navigate to the _Image Stream_ tab of the `coolstore` project in the destination cluster and see the image there
 +
@@ -369,7 +389,7 @@ image:imagestream-payment-dest.png[]
 
 Let's create a quarkus native service to handle payment and use the power of the cluster to compile this
 
-. Create a new Source 2 Image (S2I) build
+. Create a new Source to Image (S2I) build
 +
 ----
 oc new-build quay.io/quarkus/ubi-quarkus-native-s2i:19.2.0~https://github.com/hatmarch/serverless-demo.git --context-dir=payment-service --name=payment-native \
@@ -431,7 +451,245 @@ image:consuming-kafka-queue.png[]
 +
 . Finally watch the topology view until the service spins down to nothing. 
 
-=== OLD: Install the initial payment service 
+=== (WIP) Demonstrating Concurrency
+
+. Show the concurrency limit on the service by selecting the _KSVC_ in the Topology view and selecting the revision
++
+image:knative-revision-concurrency.png[]
++
+. Open a new tab with the _Topology View_ of the _Developer Perspective_
+. Run the following `hey` command to show the payment service running under load
+** NOTE: information on the `hey` command can be found link:https://github.com/rakyll/hey[here]
++
+----
+hey -n 100 -c 100 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $(oc get rt payment -o jsonpath='{.status.url}')
+----
++
+. Navigate to the Topology view while the command is running:
+** Notice number of containers that are spun up, this should be <NUM_REQUESTS>/<MAX_CONCURRENCY>
+. When the `hey` command report comes back:
+** Notice the timings
++
+image:hey-example-timings.png[Example timings]
+
+
+=== Demonstrating Knative Revisions (featuring native Quarkus)
+
+[WARNING]
+====
+If you are running linux in a container, you need to make sure the docker daemon has enough memory assigned to it, otherwise the native quarkus build will fail towards the end of the run.  This configuration seemed to be enough to build the payment-service:
+
+image:docker-requirement.png[]
+====
+
+. Use kbd:[CMD+p] to quickly open the `PaymentResource.java` and update the _COMPLETED_ message in the `pass` function:
++
+image:payment-completed-log.png[]
++
+. Next, build a native image (locally).
+** If you would like to build the image using S2I, you'll need to first checkin the changes and see <<,these instructions>>
++
+----
+cd payment-service
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -Pnative -DskipTests
+----
++
+. Next, add a build to our project that will allow us to create an image out of the binary we just compiled.
++
+----
+oc new-build quay.io/quarkus/ubi-quarkus-native-binary-s2i:19.2.0 --binary --name=payment-native
+----
++
+Next, start the (binary) build of the image using our new configuration
++
+----
+oc start-build payment-native --from-file $DEMO_HOME/payment-service/target/*-runner --follow
+----
++
+. When finished, then tag this latest build as a `payment:quarkus-native` build
++
+----
+oc tag payment-native:latest payment:quarkus-native
+----
++
+. Next, update our payment knative service to use the quarkus-native image we just created (keeping concurrency limits the same)
+** NOTE: if you don't want to write out the location to the image registry, you can use this embedded oc command after the `--image` switch
++
+----
+oc get istag/payment:quarkus-native -o jsonpath='{.image.dockerImageReference}'
+----
++
+----
+kn service update payment --image $(oc get is/payment -o jsonpath='{.status.dockerImageRepository}'):quarkus-native --revision-name "{{.Service}}-{{.Generation}}"
+----
+. Show revisions in developer console
++
+image:knative-revisions.png[]
++
+. Run the following `hey` command to show the payment service running under load
+** NOTE: information on the `hey` command can be found link:https://github.com/rakyll/hey[here]
++
+----
+hey -n 100 -c 100 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $(oc get rt payment -o jsonpath='{.status.url}')
+----
++
+. Navigate to the Topology view while the command is running:
+** Notice number of containers that are spun up, this should be <NUM_REQUESTS>/<MAX_CONCURRENCY>
+. When the `hey` command report comes back:
+** Notice the timings
++
+image:hey-example-timings-quarkus.png[Example timings with quarkus native]
++
+. Update the traffic in the _Topology View_ back to the initial revision as per the instructions in the screenshot
++
+image:knative-update-traffic-distrubtion.png[]
++
+. Run `hey` again
+. Switch back to the _Topology View_ and notice that revision 1 is getting the traffic
++
+image:knative-back-to-initial-revision.png[]
++
+. Look back at the `hey` results
+** Notice that the timings are now back in line with the initial revision
+
+
+== Troubleshooting ==
+
+=== 500 errors
+
+You may notice 500 errors, particularly if you send multiple requests under load:
+
+image:500-errors.png[]
+
+I believe this is because there is currently a race condition when the second request hits a pod where the payment topic (`producer` in the code) is not fully setup in the payment service (thus a null pointer).  Looks like the first exception happens in the `pass` function but this is caught in the handleCloudEvent function, only for the `fail` event to use the `producer` null pointer to try to log a failure at which time a new uncaught exception is raised.
+
+If you set the concurrently limit to 1, you should be able to demonstration that this error doesn't happen with hey
+
+=== Getting logs of Knative service
+
+The epheral nature of the knative service can make it hard to capture logs of the service, particularly if you notice that the service had issues after it's gone.
+
+Aside from setting up Elasticsearch to retain all logs, you can consider using `stern` in the background.  Using the .devcontainer that is run from within VSCode, you can have the following command running in a background terminal:
+
+----
+stern -l serving.knative.dev/service=payment
+----
+
+To see all the logs from revision 1 of the payment service (-1 represents the revision number I believe).  This command will include logs from all containers associated with the pod (such as `queue-proxy`).  If you only want the deployed code itself to log, add the `-c user-container` flag
+
+=== Viewing and Modifying Order (MongoDB) Database
+
+You cannot connect to the mongodb instance using the latest plain adminer container.  Instead you need to follow the special instructions below.  If you my version of adminer does not work for you, you can attempt to follow <<Updating your own Adminer image,these instructions>> for creating a new image yourself from the latest.
+
+. Start port forwarding to the mongodb service
++
+----
+oc port-forward -n coolstore svc/order-database 27017:27017
+----
++
+. Run the modified adminer pod
+** NOTE: `quay.io/mhildenb/myadminer:1.1` is a version 4.7.6 adminer container that I've updated to support this
++
+----
+docker run -p 8080:8080 -e ADMINER_DEFAULT_SERVER=docker.for.mac.localhost quay.io/mhildenb/myadminer:1.1
+----
++
+. Login as shown
++
+image:adminer-mongo-password.png[]
++
+. You should now have access to the mongo database with the ability to list and edit entries:
++
+image:adminer-mongo-edit.png[]
+
+==== Updating your own Adminer image
+
+There are two reasons why the normal adminer image cannot connect to the mongo database:
+
+1. It requires a newer version of php integration with MongoDB
+2. The mongoDB is not setup with a user and a password (Adminer does not allow access to such databases by default for security reasons)
+
+To update the latest adminer image to be able to connect to the userless MongoDB follow these instructions:
+
+. Run an instance of the adminer container as follows:
++
+----
+docker run -it -u root --name my_adminer adminer:latest sh 
+----
+** NOTE: If an instance of the container is already running you can use the `docker exec -it` command instead
++
+. Then from inside the container run
++
+----
+apk add autoconf gcc g++ make libffi-dev openssl-dev
+pecl install mongodb
+echo "extension=mongodb.so" > /usr/local/etc/php/conf.d/docker-php-ext-mongodb.ini
+----
++
+. Next add a plugin as per link:https://nerdpress.org/2019/10/23/adminer-for-sqlite-in-docker/[This site].  It will require you to create a login-password-less.php file in the `/var/www/html/plugins-enabled/` directory
++
+[CONTENTS]
+====
+----
+<?php
+require_once('plugins/login-password-less.php');
+
+/** Set allowed password
+ * @param string result of password_hash
+ */
+return new AdminerLoginPasswordLess(
+    $password_hash = password_hash("admin", PASSWORD_DEFAULT)
+);
+----
+====
++
+. now commit this container as a new image
++
+----
+docker commit my_adminer myadminer:1.1    
+----
+
+=== Insecure ImageRegistry ===
+
+Might be solved as per link:https://github.com/knative/serving/issues/2136[here] but can't get the controller pod to take the new environment variable
+
+Looks like it has something to do with the labels.  If the sha is used instead it seems to work properly.  You can find the sha like this:
+----
+$ oc get istag/payment:latest -o jsonpath='{.image.dockerImageReference}'
+image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment@sha256:21ca1acc3f292b6e94fab82fe7a9cf7ff743e4a8c9459f711ffad125379cf3c7
+----
+
+And then apply it as a service like this:
+----
+kn service create payment --image $(oc get istag/payment:initial-build -o jsonpath='{.image.dockerImageReference}') --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false --force
+----
+
+----
+oc port-forward <image-registry-pod> -n openshift-image-registry 5001:5000
+----
+
+To get the cert as a pem file, do this:
+----
+openssl s_client -showcerts -connect localhost:5001 </dev/null 2>/dev/null|openssl x509 -outform PEM >mycertfile.pem
+----
+
+== Appendix
+
+=== Copying OpenShift images to public repositories
+
+If you have images that you've compiled on an OpenShift cluster and you want to pull them out of the local image stream to something like `quay.io`, you can use the following skopeo command (from inside the .devcontainer).  This is an example for the payment service
+* USER: your username for the public repository
+* PASSWORD: your password or TOKEN for the public repository
+* `quay.io/mhildenb/homemade-serverless-java:1.0`: Replace this with your repository, project, image-name, and version
+
+----
+skopeo copy --src-creds "$(oc whoami):$(oc whoami -t)" --dest-creds "<USER>:<PASSWORD>" docker://$(oc get is payment -o jsonpath='{.status.publicDockerImageRepository}'):latest docker://quay.io/mhildenb/homemade-serverless-java:1.0        
+----
+
+=== Install the initial payment MIRCO service 
+
+This section is necessary if you're wanting to show the conv
 
 . Run the following commands in a shell
 +
@@ -624,20 +882,18 @@ Conditions:
 +
 image:find-image.png[]
 
-[TIP]
-.To delete a knative service
-====
+
+=== Deleting Knative Services
+
 Though knative services are reported from oc get svc and oc get rt, you cannot delete them in this way.  Instead you must delete them based on the distinct (knative) descriptor that they have
 
 Here is a command to delete all services (exposed as routes) that have the name that includes 'payment'
 ----
 oc delete services.serving.knative.dev $(oc get rt --no-headers | grep -i payment | awk '{print $1}')
 ----
-====
 
-[NOTE]
-.Alternative Knative service creation (without `kn` client)
-====
+=== Alternative Knative service creation (without `kn` client)
+
 Knative Services can be created not just using the command line but also by creating resources using yaml
 
 ----
@@ -651,7 +907,6 @@ $ watch oc get rt
 NAME      URL                                                                           READY   REASON
 payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
 ----
-====
 
 === Trigger Knative Service with Kafka Event
 
@@ -735,9 +990,8 @@ $DEMO_HOME/scripts/install-coolstore.sh -p coolstore
 echo "http://$(oc get route coolstore-ui -o jsonpath='{.spec.host}')/"
 ----
 
-[NOTE]
-.Where's the payment service?
-====
+=== Building the Payment Service
+
 This command does not build the payment service as it's assumed that the it will get changed.  But if you need to create the payment service
 
 ----
@@ -757,165 +1011,7 @@ Finally, be sure to tag the payment build (we'll need this for service revisions
 oc tag payment:latest payment:original
 ----
 
-====
-
-=== Coolstore without payment processing ===
-
-[red]#FIXME: Needs to be finished#
-
-Navigate to the coolstore ui (by using badge on the coolstore-ui component)
-
-Demonstrate that purchases can be made (as before), but orders are now not processed
-
-image:no-payment-processing.png[]
-
-==== Invoke the service ====
-
-You can call the knative service that you just created if it is ready.  Your service is ready if you issue the following command and get the following output
-----
-$ oc get rt
-NAME      URL                                                                           READY   REASON
-payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
-----
-
-Create a new tab on the QueueWindow and navigate to the URL found (or use command below to get it quickly)
-----
-export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
-----
-
-Notice that the Developer Perspective service springs to life and that the order (eventually) gets processed
-
-
-==== Context ====
-image::coolstore-initial-ui.png[]
-
-== Demonstrate the Working App
-
-Demonstrate the app working.  By going to the store.  You can find the URL like this:
-----
-oc get route coolstore-ui -n user1-cloudnativeapps
-----
-
-[red]#FIXME: This is where we left off on 4-04.  Works up to this point on remote cluster#
-
-[blue]#NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload#
-
-image:add-to-cart.png[]
-
-From the cart, checkout and then enter credit card details (any 16-digit number beginning with 4 will work)
-
-image:checkout.png[]
-
-Now navigate to the orders page.  Notice that the order gets processed after about 5 seconds (you may need to refresh page to see this)
-
-image:orders.png[]
-
-
-== Create a Knative service (Knative Serving)
-
-NOTE: You must have done the Knative Operator installation in the link:demo-setup.adoc[Setup doc].
-
-First stop our payment service from being run all the time (by deleting a deployment) and remove all connections to it
-
-----
-oc project user1-cloudnativeapps
-oc delete dc/payment route/payment svc/payment
-----
-
-Next, in order to create the Knative service, we need to know which image needs to be spun up to handle, in this case, order events.  To find the image go to *Builds > Image Streams* on the left menu then input payment to show the payment imagestream. Click on payment imagestream:
-
-image:find-image.png[]
-
-In the Overview tab, copy the IMAGE REPOSITORY value shown 
-
-image:image-repository.png[]
-
-[TIP]
-.You can use the command line to quickly get the image stream
-====
-----
-oc get is payment -o jsonpath="{.status.dockerImageRepository}" -n user1-cloudnativeapps
-----
-====
-Then open the *payment-service/knative/knative-serving-service.yaml* file and paste in that value
-
-Then update and update the image: line with this value.
-
-image:knative-service-edit.png[]
-
-[TIP]
-.To delete a knative service
-====
-Though knative services are reported from oc get svc and oc get rt, you cannot delete them in this way.  Instead you must delete them based on the distinct (knative) descriptor that they have
-
-Here is a command to delete all services (exposed as routes) that have the name that includes 'payment'
-----
-oc delete services.serving.knative.dev $(oc get rt --no-headers | grep -i payment | awk '{print $1}')
-----
-====
-
-Now create the service using this command:
-
-----
-oc apply -f payment-service/knative/knative-serving-service.yaml 
-----
-
-[NOTE]
-.A better way to install the service
-====
-If you have access to the kn CLI, you can create a service without YAML.  The nice thing about this is that it will tell you once ingress is configured (without having to run a watch)
-
-----
-kn service create payment --image $(oc get istag/payment:initial-build -o jsonpath='{.image.dockerImageReference}') --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false
-----
-====
-
-It will take a while for ingress to be configured for the service.  You can issue this command and you should see the following output:
-
-----
-$ watch oc get rt
-NAME      URL                                                                           READY   REASON
-payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
-----
-
-=== Demonstrate that payment is removed
-
-NOTE: The knative serving service will automatically run the pod when created, so best to make sure it goes back to 0 before it goes in the queue
-
-We need to remove our old microservice way of running the payment service.  For that we will delete build configs and existing deployments
-
-Setup your screen like the following.  Notice that QueueWindow is done by going to one of the kafka pods.
-
-image:initial-screen-layout.png[]
-
-Run this command in the queue window
-----
-bin/kafka-console-consumer.sh --topic orders --bootstrap-server localhost:9092
-----
-
-Navigate to the coolstore ui (by using badge on the coolstore-ui component)
-
-Demonstrate that purchases can be made (as before), but orders are now not processed
-
-image:no-payment-processing.png[]
-
-== Invoke the service
-
-You can call the knative service that you just created if it is ready.  Your service is ready if you issue the following command and get the following output
-----
-$ oc get rt
-NAME      URL                                                                           READY   REASON
-payment   http://payment.user1-cloudnativeapps.apps.service-mesh-demo.openshifttc.com   True    
-----
-
-Create a new tab on the QueueWindow and navigate to the URL found (or use command below to get it quickly)
-----
-export SVC_URL=$(oc get rt payment -o template='{{ .status.url }}')
-----
-
-Notice that the Developer Perspective service springs to life and that the order (eventually) gets processed
-
-== Remove direct Knative integration code
+=== Remove direct Knative integration code from original payment service
 
 Currently our Payment service directly binds to Kafka to listen for events. Now that we have Knative eventing integration, we no longer need this code. CMD+p to navigate to the *PaymentResource.java* file 
 
@@ -977,97 +1073,7 @@ Conditions:
   ++ RoutesReady             1m 
 ----
 
-== Create Knative event to kickoff service (Knative Eventing)
-
-Now we want to use events the order topic to be our *source* (see also link:https://knative.dev/docs/eventing/samples/kafka/source/index.html[here] for generic example) and use the payment service as our *sink*
-
-[NOTE]
-====
-First we need to install the Kafka knative event source operator as seen below.  Go to link:demo-setup.adoc[here] for more details
-
-image:kafka-event-operator.png[]
-====
-
-Now we need to create an instance of kakfa eventing for our namespace.  To do this call
-
-----
-$ oc apply -f $DEMO_HOME/install/kafka-eventing/kafka-eventing.yaml 
-knativeeventingkafka.eventing.knative.dev/knative-eventing-kafka created
-
-$ oc wait --for=condition=InstallSucceeded KnativeEventingKafka knative-eventing-kafka
-----
-
-Then wait until all the kafka pods are created.  Use the following watch command and look for output like this
-
-----
-$ watch "oc get pods | grep -i ^kafka"
-
-kafka-ch-controller-5f6b47c9fc-7xh8t          0/1     ContainerCreating   0          20m
-kafka-ch-dispatcher-5fc59bdf5b-hnt6h          0/1     ContainerCreating   0          20m
-kafka-controller-manager-0                    1/1     Running             0          4m25s
-kafka-webhook-74d6d5cd-gc4p5                  0/1     ContainerCreating   0          20m
-----
-
-Then use the yaml file to bind the kafka event source to the payment service sink (show what's going on first)
-
-image:kafka-event-source.png[]
-
-----
-oc apply -f $DEMO_HOME/payment-service/knative/kafka-event-source.yaml 
-----
-
-Then check to make source the event source is running
-
-----
-$ oc get pods -l knative-eventing-source-name=kafka-source
-----
-
-Now we want to prepare some windows for our demo.
-
-*Window 1*: Duplicate the tab where you're looking at the user1-cloudnativeapps project.  Then navigate to the *Workloads > Pods* and find the _my-cluster-kafka-0_ pod.  Go then to the Terminal tab.  From there, enter the command as follows (also in image) and click _Expand_ in the upper right corner
-
-image:watch-orders.png[]
-
-----
-bin/kafka-console-consumer.sh --topic orders --bootstrap-server localhost:9092
-----
-
-*Window 2*: Duplicate the tab again and then switch to the *Developer Perspective*.  There will be a lot of pods, so you'll want to filter based on the "focus" application group.  Make sure the knative payment pod is featured prominently.  It should indicate zero pods
-
-image:window2-setup.png[]
-
-
-Then hit the coolstore-ui by *[SHIFT+OPTION] clicking* the launcher icon on the Developer Perspective (see previous) and moving the newly opened window to the right
-
-Recommended arrangement is like this:
-
-image:recommended-layout.png[]
-
-[HINT]
-.If you need to open the window another way...
-====
-You can find the URL by running this command in a terminal
-----
-oc get route -n user1-cloudnativeapps | grep coolstore-ui | awk '{print $2}'
-----
-====
-
-Now puchase something and add it to the cart.  Then Checkout.
-
-Upon checkout you should see the payment pod spinning up to consume the order
-
-image:consuming-kafka-queue.png[]
-
-You can then go to the *Orders* section of the site to show that the order was consumed.  When you return, the pod should be spun down (with a clear or black outline).
-
-If you'd like to play more with spin up and spin down, you can click on the route badge on the topography view to show the pod spinning up and then spinning down.
-
-You can also show how subsequent requests when pod is up continue to be serviced by that pod (subject to the max concurrency number setup in knative-eventing).
-
-when this is complete you can either take a look at revisions, or move on to kafka eventing
-
-
-== Recompile the payment service (quarkus)
+=== Recompile the payment service (native quarkus)
 
 [WARNING]
 .Resource Requirements for Docker Quarkus Build
@@ -1161,43 +1167,6 @@ NOTE: _The knative-serving attribute scale-to-zero-grace-period is a “dynamic 
 TODO: See link:https://knative.dev/docs/serving/samples/autoscale-go/index.html[here]
 Then reopen the website
 
-==== Service Pinning
+=== Service Pinning
 
 TODO: See link:https://redhat-developer-demos.github.io/knative-tutorial/knative-tutorial-basics/0.7.x/02-basic-fundas.html#_service_pinned_to_first_revision[here]
-
-== Troubleshooting ==
-
-=== Insecure ImageRegistry ===
-
-Might be solved as per link:https://github.com/knative/serving/issues/2136[here] but can't get the controller pod to take the new environment variable
-
-Looks like it has something to do with the labels.  If the sha is used instead it seems to work properly.  You can find the sha like this:
-----
-$ oc get istag/payment:latest -o jsonpath='{.image.dockerImageReference}'
-image-registry.openshift-image-registry.svc:5000/user1-cloudnativeapps/payment@sha256:21ca1acc3f292b6e94fab82fe7a9cf7ff743e4a8c9459f711ffad125379cf3c7
-----
-
-And then apply it as a service like this:
-----
-kn service create payment --image $(oc get istag/payment:initial-build -o jsonpath='{.image.dockerImageReference}') --label "app.kubernetes.io/part-of=focus" --revision-name "{{.Service}}-{{.Generation}}" --annotation sidecar.istio.io/inject=false --force
-----
-
-----
-oc port-forward <image-registry-pod> -n openshift-image-registry 5001:5000
-----
-
-To get the cert as a pem file, do this:
-----
-openssl s_client -showcerts -connect localhost:5001 </dev/null 2>/dev/null|openssl x509 -outform PEM >mycertfile.pem
-----
-
-== TODO
-
-
-* Make sure the reset scripts work appropriately (with the option to keep all operators active)
-
-* test out the image-stream stuff
-
-* update the template to
-    - add a variable for the namespace (currently hardcoded to user1-cloudnativeapps)
-    - change the image streams
