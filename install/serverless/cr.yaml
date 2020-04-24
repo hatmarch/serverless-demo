@@ -11,7 +11,7 @@ metadata:
 spec:
   config:
     autoscaler:
-      container-concurrency-target-default: '100'
+      container-concurrency-target-default: '2'
       container-concurrency-target-percentage: '1.0'
       enable-scale-to-zero: 'true'
       max-scale-up-rate: '10'
