@@ -49,6 +49,21 @@ public class PaymentResource {
         String orderId = "unknown";
         String paymentId = "" + ((int) (Math.floor(Math.random() * 100000)));
 
+        // There is a potential race condition, particularly if we're not waiting for 
+        // 5 seconds to model payment processing delay.  Thus wait some random number of microseconds
+        // until the producer is done being initialized from the init method below
+        while (producer == null)
+        {
+            log.info("Producer is null, waiting for it to be set");
+            try{
+                Thread.sleep((int) ((Math.random()*100)%1000));
+            } 
+            catch (Exception ex) 
+            {
+                log.info("could not sleep!  Error: " + ex.getMessage());
+            }
+        }
+
         try {
             log.info("received event: " + cloudEventJson);
             JsonObject event = new JsonObject(cloudEventJson);
