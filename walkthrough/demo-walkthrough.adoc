@@ -314,7 +314,7 @@ oc apply -f $DEMO_HOME/payment-service/knative/kafka-event-source.yaml
 . Check to see if the event source is running.  It won't be running yet since the payment *sink* does not exist yet on this cluster
 +
 ----
-$ oc get pods -l eventing.knative.dev/SourceName=kafka-source-orders
+oc get pods -l eventing.knative.dev/SourceName=kafka-source-orders
 ----
 +
 . You can also refresh the orders page on the coolstore site and show that the payment is still not processed
@@ -416,10 +416,10 @@ Once you have a `payment:initial` image in the `coolstore` we need to add the se
 
 . Next create a new knative payment knative service (as we did previously on the CRC instance)
 ** NOTE: the -l flag is a label that will allow the service to show up as part of the "focus" topology
+** TIP: if you want to set the concurrency limit per revision, you can use the `--concurrency-limit=2` flag
 +
 ----
-kn service create payment --image image-registry.openshift-image-registry.svc:5000/coolstore/payment:initial --revision-name "{{.Service}}-{{.Generation}}" --concurrency-limit=2 -l app.kubernetes.io/part-of=focus 
-
+kn service create payment --image image-registry.openshift-image-registry.svc:5000/coolstore/payment:initial --revision-name "{{.Service}}-{{.Generation}}" -l app.kubernetes.io/part-of=focus 
 ----
 +
 . Demonstrate the the service is ready (and dormant) by showing the topology view
@@ -451,9 +451,10 @@ image:consuming-kafka-queue.png[]
 +
 . Finally watch the topology view until the service spins down to nothing. 
 
-=== (WIP) Demonstrating Concurrency
+=== Demonstrating Concurrency
 
 . Show the concurrency limit on the service by selecting the _KSVC_ in the Topology view and selecting the revision
+** ALTERNATIVELY: if you have not set this on a per revision basis, you can show the global setting the knative instance
 +
 image:knative-revision-concurrency.png[]
 +
