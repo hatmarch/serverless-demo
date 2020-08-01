@@ -12,7 +12,7 @@
 * Before running any script commands, make sure the run the following in the appropriate shell
 +
 ----
-source scripts/shell-setup.sh
+. scripts/shell-setup.sh
 ----
 +
 * Make sure you have a user1-cloudnativeapps namespace (the install script will run this)
