@@ -4,7 +4,7 @@ USER root
 
 # install stern
 RUN cd /usr/local/bin && \
-    wget https://github.com/wercker/stern/releases/download/1.6.0/stern_linux_amd64 && \
+    wget https://github.com/wercker/stern/releases/download/1.11.0/stern_linux_amd64 && \
     mv stern_linux_amd64 stern && chmod 755 stern && \
 # instal knative client
     wget -qO- https://mirror.openshift.com/pub/openshift-v4/clients/serverless/0.13.1/kn-linux-amd64-0.13.1.tar.gz | tar -zxvf - -C /usr/local/bin ./kn && chmod 755 /usr/local/bin/kn && \
