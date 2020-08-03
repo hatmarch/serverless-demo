@@ -3,7 +3,6 @@
 set -e -u -o pipefail
 
 declare SKIP_KAFKA_EVENTING=""
-declare SKIP_EVENTING=""
 declare FOR_CRC=""
 declare PROJECT="user1-cloudnativeapps"
 
@@ -11,11 +10,6 @@ while (( $# )); do
     case "$1" in
         --skip-knative-kafka-eventing)
             SKIP_KAFKA_EVENTING="true"
-            shift
-            ;;
-        --skip-all-eventing)
-            SKIP_KAFKA_EVENTING="true"
-            SKIP_EVENTING="true"
             shift
             ;;
         --crc)
@@ -57,20 +51,15 @@ command.wait_for_crd()
 # Subscribe to Operators
 #
 
-# install the kafka operator (AMQStreams)
-oc apply -f "$DEMO_HOME/install/kafka/subscription.yaml" 
-
 # install the serverless operator
 oc apply -f "$DEMO_HOME/install/serverless/subscription.yaml" 
 
-# install the knative eventing operator
-if [ -z "$SKIP_EVENTING" ]; then
-    oc apply -f "$DEMO_HOME/install/knative-eventing/subscription.yaml"
-else
-    echo "SKIPPING installation of knative eventing at user's request"
-fi
+# install the kafka operator (AMQStreams)
+oc apply -f "$DEMO_HOME/install/kafka/subscription.yaml" 
 
-# install the kafka knative eventing operator
+# NOTE: knative eventing operator is now included as part of the OpenShift serverless operator
+
+#install the kafka knative eventing operator
 if [ -z "$SKIP_KAFKA_EVENTING" ]; then
     oc apply -f "$DEMO_HOME/install/kafka-eventing/subscription.yaml"
 else
@@ -112,16 +101,13 @@ oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeou
 #
 # Install Knative Eventing
 #
-if [ -z "$SKIP_EVENTING" ]; then
-    echo "Waiting for the operator to install the Knative Event CRD"
-    command.wait_for_crd "crd/knativeeventings.eventing.knative.dev"
+echo "Waiting for the operator to install the Knative Event CRD"
+command.wait_for_crd "crd/knativeeventings.operator.knative.dev"
 
-    oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
-    echo "Waiting for the knative eventing instance to finish installing"
-    oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing --timeout=6m
-else
-    echo "Skipped Knative Eventing configuration at user's request"
-fi
+oc apply -f "$DEMO_HOME/install/knative-eventing/knative-eventing.yaml" 
+echo "Waiting for the knative eventing instance to finish installing"
+oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing --timeout=6m
+
 
 if [ -z "$SKIP_KAFKA_EVENTING" ]; then
     # This where kafka eventing would be installed
