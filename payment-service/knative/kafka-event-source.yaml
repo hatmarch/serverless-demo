@@ -4,6 +4,9 @@ metadata:
   name: kafka-source-orders
   labels:
     app.kubernetes.io/part-of: focus
+    app: kafka-source-orders
+    app.kubernetes.io/component: kafka-source-orders
+    app.kubernetes.io/instance: kafka-source-orders
 spec:
   consumerGroup: payment-consumer-group
   bootstrapServers: 
@@ -11,6 +14,7 @@ spec:
   topics: 
   - orders
   sink:
-    apiVersion: serving.knative.dev/v1alpha1
-    kind: Service
-    name: payment
+    ref:
+      apiVersion: serving.knative.dev/v1
+      kind: Service
+      name: payment
