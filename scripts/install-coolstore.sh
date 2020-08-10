@@ -77,11 +77,11 @@ else
     oc new-build quay.io/quarkus/ubi-quarkus-native-binary-s2i:19.2.0 --binary --name=payment-native
     
     # import initial payment build
-    oc import-image --from quay.io/mhildenb/homemade-serverless-java:1.0 \
+    oc import-image --from quay.io/mhildenb/homemade-serverless-java:1.1 \
         $(oc get is/payment -o jsonpath='{.status.dockerImageRepository}'):initial  
     
     # import initial payment native build
-    oc import-image --from quay.io/mhildenb/homemade-serverless-native:1.0 \
+    oc import-image --from quay.io/mhildenb/homemade-serverless-native:1.1 \
         $(oc get is/payment-native -o jsonpath='{.status.dockerImageRepository}'):quarkus-initial
 
     # tag in payment image stream
