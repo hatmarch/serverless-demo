@@ -11,7 +11,9 @@
 		"-v", "${env:HOME}/.oh-my-zsh:/home/jboss/.oh-my-zsh",
 		"-v", "${env:HOME}/.helm:/home/jboss/.helm",
 		"-v", "${env:HOME}/.ssh:/home/jboss/.ssh",
-		"-e", "AWS_PROFILE=redhat"
+		// Used for AWS based clusters
+		"-e", "AWS_PROFILE=redhat",
+		"-e", "REGION=ap-southeast-2"
 		//"AWS_PROFILE=${env:AWS_PROFILE}"
 	],
 	"extensions": [

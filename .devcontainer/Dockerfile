@@ -19,7 +19,10 @@ RUN curl "https://d1vvhvl2y92vvt.cloudfront.net/awscli-exe-linux-x86_64.zip" -o 
     unzip awscliv2.zip && ./aws/install && rm awscliv2.zip && rm -rf ./aws 
     # && ln -s /usr/local/bin/aws2 /usr/local/bin/aws
 
-# for htpasswd support
-RUN yum install -y httpd-tools-2.4.37-16.module+el8.1.0+4134+e6bad0ed.x86_64
+# for htpasswd support 
+# install a more modern version of tkn
+RUN yum install -y httpd-tools \
+    && curl -L https://github.com/tektoncd/cli/releases/download/v0.11.0/tkn_0.11.0_Linux_x86_64.tar.gz | \
+    tar -xvzf - -C /usr/local/bin/ tkn && chmod 755 /usr/local/bin/tkn
 
 USER jboss
