@@ -210,7 +210,7 @@ The coolstore and Knative Eventing require more horsepower than CRC can currentl
 
 You can setup the coolstore by running the following commands after logging into the cluster
 ----
-source scripts/shell-setup.sh
+. scripts/shell-setup.sh
 $DEMO_HOME/scripts/install-coolstore.sh -p coolstore
 ----
 
@@ -679,13 +679,37 @@ openssl s_client -showcerts -connect localhost:5001 </dev/null 2>/dev/null|opens
 
 === Copying OpenShift images to public repositories
 
-If you have images that you've compiled on an OpenShift cluster and you want to pull them out of the local image stream to something like `quay.io`, you can use the following skopeo command (from inside the .devcontainer).  This is an example for the payment service
+If you have images that you've compiled on an OpenShift cluster and you want to pull them out of the local image stream to something like `quay.io`, you can use one of the following approaches to copy the images out of openshift.  Both use the `skopeo` command which is installed by default in the .devcontainer.  
+
+For both examples, it assumes the copying of a payment service.  As such, note the following for the different variables:
+
 * USER: your username for the public repository
 * PASSWORD: your password or TOKEN for the public repository
-* `quay.io/mhildenb/homemade-serverless-java:1.0`: Replace this with your repository, project, image-name, and version
+* PROJECT: the project your image stream lives in (such as coolstore)
+* IMAGE_DEST: Replace this with your repository, project, image-name, and version, example: `quay.io/mhildenb/homemade-serverless-java:1.0`: 
+
+==== Image Registry is exposed publicly 
+
+You need only run the following command:
 
 ----
-skopeo copy --src-creds "$(oc whoami):$(oc whoami -t)" --dest-creds "<USER>:<PASSWORD>" docker://$(oc get is payment -o jsonpath='{.status.publicDockerImageRepository}'):latest docker://quay.io/mhildenb/homemade-serverless-java:1.0        
+skopeo copy --src-creds "$(oc whoami):$(oc whoami -t)" --dest-creds "${USER}:${PASSWORD}" docker://$(oc get is payment -o jsonpath='{.status.publicDockerImageRepository}'):latest docker://{IMAGE_DEST}       
+----
+
+==== Image Registry is private
+
+If instead you need to copy from an image registry that is not exposed outside the cluster, you must instead do the following:
+
+. Port forward to openshift's internal image registry
++
+----
+oc port-forward svc/image-registry -n openshift-image-registry 5000:5000
+----
++
+. Then in a separate shell, run the following command
++
+----
+skopeo copy --src-creds "$(oc whoami):$(oc whoami -t)" --src-tls-verify=false --dest-creds "${USER}:${PASSWORD}" docker://localhost:5000/${PROJECT}/payment:latest docker://{IMAGE_DEST}
 ----
 
 === Install the initial payment MIRCO service 
@@ -695,7 +719,7 @@ This section is necessary if you're wanting to show the conv
 . Run the following commands in a shell
 +
 ----
-source scripts/shell-setup.sh
+. scripts/shell-setup.sh
 code .
 ----
 +
@@ -703,7 +727,7 @@ code .
 
 +
 ----
-source scripts/shell-setup.sh
+. scripts/shell-setup.sh
 $DEMO_HOME/scripts/install-prereq.sh homemade-serverless --crc 
 ----
 +
