@@ -26,8 +26,9 @@
 		"redhat.vscode-knative"
 	],
 	"settings":{
-		"java.home": "/usr/lib/jvm/java-1.8.0-openjdk",
+		"java.home": "/usr/lib/jvm/java-11",
 		"http.proxyStrictSSL": false,
-		"workbench.tips.enabled": false
+		"workbench.tips.enabled": false,
+		"workbench.colorTheme": "Monokai"
 	}
 }
