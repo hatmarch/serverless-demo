@@ -20,23 +20,25 @@ objects:
   kind: Kafka
   metadata:
     name: my-cluster
-    namespace: user1-cloudnativeapps
   spec:
     kafka:
-      version: 2.5.0
+      version: 2.6.0
       replicas: ${{REPLICA_COUNT}}
       listeners:
-        plain:
-          authentiation:
-            type: scram-sha-512
-        tls:
-          authentiation:
-            type: tls
+        - name: plain
+          port: 9092
+          type: internal
+          tls: false
+        - name: tls
+          port: 9093
+          type: internal
+          tls: true
       config:
         offsets.topic.replication.factor: ${{REPLICA_COUNT}}
         transaction.state.log.replication.factor: ${{REPLICA_COUNT}}
         transaction.state.log.min.isr: ${{MIN_ISR}}
-        log.message.format.version: '2.3'
+        log.message.format.version: '2.6'
+        num.partitions: 100
       storage:
         type: ephemeral
     zookeeper:
@@ -44,7 +46,5 @@ objects:
       storage:
         type: ephemeral
     entityOperator:
-      topicOperator:
-        reconciliationIntervalSeconds: 90
-      userOperator:
-        reconciliationIntervalSeconds: 120
+      topicOperator: {}
+      userOperator: {}
