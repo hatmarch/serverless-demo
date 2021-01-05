@@ -16,6 +16,8 @@ fi
 export DEMO_HOME=$( cd "$(dirname "${SCRIPT}")/.." ; pwd -P )
 
 echo "DEMO_HOME set to $DEMO_HOME"
+export dev_prj="kn-demo-dev"
+echo "Dev project is ${dev_prj}"
 
 alias cpr='tkn pr cancel $(tkn pr list -o name --limit 1 | cut -f 2 -d "/")'
 alias ctr='tkn tr cancel $(tkn tr list -o name --limit 1 | cut -f 2 -d "/")'
@@ -64,3 +66,5 @@ aws-down() {
     aws ec2 stop-instances --instance-ids --region ${AWS_REGION} \
         $(aws ec2 describe-instances --region ${AWS_REGION} --query 'Reservations[*].Instances[*].{Instance:InstanceId}' --output text --filters "Name=tag-key,Values=kubernetes.io/cluster/${CLUSTER_NAME}-*" "Name=instance-state-name,Values=running") 
 }
+
+echo "Welcome to the serverless-demo!"
