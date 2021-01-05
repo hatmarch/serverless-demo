@@ -5,7 +5,7 @@ metadata:
   name: knative-kafka
 spec:
   channel:
-    bootstrapServers: my-cluster-kafka-bootstrap.kafka:9092
+    bootstrapServers: my-cluster-kafka-bootstrap.%KAFKA_PRJ%:9092
     enabled: true
   source:
     enabled: true
