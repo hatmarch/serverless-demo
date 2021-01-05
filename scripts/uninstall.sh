@@ -59,7 +59,7 @@ get_and_validate_options() {
       exit 1
   fi
 
-  KAFKA_PROJECT=${KAFKA_PROJECT_IN:-"${PROJECT_PREFIX}"}
+  KAFKA_PROJECT=${KAFKA_PROJECT_IN:-"${PROJECT_PREFIX}-dev"}
 }
 
 remove-operator()
@@ -94,6 +94,7 @@ main() {
     # Delete main project
     dev_prj="${PROJECT_PREFIX}-dev"
     echo "Deleting project $dev_prj"
+    oc delete all --all -n ${dev_prj} || true
     oc delete project "${dev_prj}" || true
     
     echo "Uninstalling Kafka project $KAFKA_PROJECT"
@@ -105,21 +106,25 @@ main() {
 
     if [[ "${full_flag:-""}" ]]; then
         echo "Uninstalling knative eventing"
+        oc delete knativekafkas.operator.serverless.openshift.io knative-kafka -n knative-eventing || true
         oc delete knativeeventings.operator.knative.dev knative-eventing -n knative-eventing || true
+        
         oc delete namespace knative-eventing || true
 
         echo "Uninstalling knative serving"
         oc delete knativeservings.operator.knative.dev knative-serving -n knative-serving || true
+        oc delete ingresses.networking.internal.knative.dev --all -n knative-serving || true
+ 
         # note, it takes a while to remove the namespace.  Move on to other things before we wait for the removal
         # of this project below
+        # oc delete all --all -n knative-serving || true
         oc delete namespace knative-serving --wait=false || true
-
-        remove-operator "knative-kafka-operator" || true
 
         remove-operator "amq-streams" || true
 
         echo "Removing Serverless Operator related CRDs"
         remove-crds "knative.dev" || true
+        remove-crds "serverless.openshift.io" || true
 
         remove-crds "kafka.strimzi.io" || true
 
