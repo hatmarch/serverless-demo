@@ -1,0 +1,4 @@
+[submodule "coolstore"]
+	path = coolstore
+	url = https://github.com/hatmarch/coolstore.git
+	branch = serverless-demo
