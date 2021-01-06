@@ -1,0 +1,57 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: model-trigger-template
+spec:
+  params:
+  - name: gitrevision
+    description: The git revision
+    default: master
+  - name: gitrepositoryurl
+    description: The git repository url
+  - name: message
+    description: The message to print
+    default: This is the default message
+  - name: contenttype
+    description: The Content-Type of the event
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: payment-pipeline-git-triggered-run-
+      labels:
+        tekton.dev/pipeline: payment-pipeline
+    spec:
+      pipelineRef:
+        name: payment-pipeline
+      params:
+      - name: GIT_REPO
+        value: $(tt.params.gitrepositoryurl)
+      - name: GIT_REVISION
+        value: $(tt.params.gitrevision)
+      - name: GIT_MESSAGE
+        value: $(tt.params.message)
+      - name: CACHE_VOLUME
+        value: cache-vol
+      - name: SERVICE_NAME
+        value: "payment"
+      - name: PATH_CONTEXT
+        value: "payment-service"
+      resources:
+      - name: app-image
+        resourceSpec:
+          type: image
+          params:
+          - name: url
+            value: image-registry.openshift-image-registry.svc:5000/demo-dev/payment
+      workspaces:
+      - name: local-workspace
+        persistentVolumeClaim:
+          claimName: workvol-pvc
+      podTemplate:
+        volumes:
+        - name: cache-vol
+          persistentVolumeClaim:
+            claimName: cache-pvc
+      timeout: 1h0m0s

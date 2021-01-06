@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: ct-knative-service-run-
+spec:
+    taskRef:
+      kind: ClusterTask
+      name: kn-service
+    resources:
+      inputs:
+      - name: image
+        resourceSpec:
+          type: image
+          params:
+          - name: url
+            value: image-registry.openshift-image-registry.svc:5000/kn-demo-dev/payment
+    params:
+    - name: SERVICE_NAME
+      value: "payment"
+    - name: ACTION
+      value: update
+    - name: TARGET_PROJECT
+      value: dev-demo-dev
+    - name: CONCURRENCY_LIMIT
+      value: "1"
+    - name: ADDITIONAL_ARGS
+      value:
+      # - -e 
+      # - "mp.messaging.outgoing.payments.bootstrap.servers=my-cluster-kafka-bootstrap.dev-demo-support:9092"
+      # - -l
+      # - "app.kubernetes.io/part-of=focus"
+      - --log-http
+    serviceAccountName: pipeline

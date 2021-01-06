@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: git-workspace-run-
+spec:
+    taskRef:
+      name: git-clone
+    workspaces:
+    - name: workvol
+      persistentVolumeClaim:
+        claimName: workvol-pvc
+    inputs:
+      params:
+      - name: url
+        value: 'https://github.com/hatmarch/coolstore.git'
+        #value: 'http://gogs:3000/gogs/fraud_detection_support.git'
+      - name: revision
+        value: 'master'
+      - name: message
+        value: 'built by task run'
+      # by setting subdirectory parameters to ""
+      # checkout will clone to the root of the local-maven-source
+      # volume, which will allow other tasks to find this directory
+      # at their name for the mount point
+      - name: subdirectory
+        value: "source"
+      - name: deleteExisting
+        value: "true"

@@ -1,0 +1,22 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: codeready-workspaces
+  namespace: "%CRW_PRJ%"
+spec:
+  channel: latest
+  installPlanApproval: Automatic
+  name: codeready-workspaces
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+#  startingCSV: crwoperator.v2.1.0
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+#  generateName: codeready-
+  name: codeready
+  namespace: "%CRW_PRJ%"
+spec:
+  targetNamespaces:
+  - "%CRW_PRJ%"

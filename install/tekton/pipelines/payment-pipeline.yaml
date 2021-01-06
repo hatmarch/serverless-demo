@@ -1,0 +1,111 @@
+# WARNING: DO NOT kubectl apply -f this file directly.  It first needs variable substitution like so:
+# sed "s/demo-dev/$dev_prj/g" $DEMO_HOME/kube/tekton/pipelines/fraud-model-dev-pipeline.yaml | sed "s/demo-cicd/$cicd_prj/g" | oc apply -f - -n $cicd_prj
+# where dev_prj is set to point to your dev project and cicd_prj is set to point to your cicd project
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: payment-pipeline
+spec:
+  workspaces:
+  - name: local-workspace
+  params:
+    - name: GIT_REPO
+      type: string
+      description: The repo to check output
+      default: 'http://gogs:3000/gogs/coolstore.git'
+    - name: GIT_REVISION
+      type: string
+      description: The branch to be built
+      default: 'master'
+    - name: GIT_MESSAGE
+      type: string
+      description: The commit message of the triggered build (if any)
+      default: "<none>"
+    - name: PATH_CONTEXT
+      type: string
+      description: Where the code is relative to the start of the GIT_REPO
+      default: "."
+    - name: CACHE_VOLUME
+      description: "OPTIONAL: The name of a volume where cached build and image artefacts are stored."
+      default: empty-dir-volume
+    - name: SERVICE_NAME
+      description: The name of the knative service to deploy of the provided image
+    - name: KN_ADDITIONAL_ARGS
+      type: array
+      description: "Additional Arguments to pass to knative (default: none)"
+      default: []
+    # - name: IMAGE_URL
+    #   type: string
+    #   description: The URL or the repository that the image will be saved out to
+  resources:
+  - name: app-image
+    type: image
+  tasks:
+  - name: checkout
+    taskRef:
+      name: internal-git-clone
+      kind: ClusterTask
+    workspaces:
+    - name: workvol
+      workspace: local-workspace
+    params:
+    - name: url
+      value: $(params.GIT_REPO)
+    - name: revision
+      value: $(params.GIT_REVISION)
+    - name: message
+      value: $(params.GIT_MESSAGE)
+    # by setting subdirectory parameters to ""
+    # checkout will clone to the root of the local-workspace
+    # volume, which will allow other tasks to find this directory
+    # at their name for the mount point
+    - name: subdirectory
+      value: "source"
+    - name: deleteExisting
+      value: "true"
+    - name: submodules
+      value: "false"
+  - name: build-image
+    taskRef:
+      kind: ClusterTask
+      name: jib-maven
+    runAfter:
+      - checkout
+    params:
+    - name: DIRECTORY
+      value: source/$(params.PATH_CONTEXT)
+    - name: CACHE
+      value: $(params.CACHE_VOLUME)
+    - name: INSECUREREGISTRY
+      value: "true"
+    resources:
+      outputs:
+      - name: image
+        resource: app-image
+    workspaces:
+    - name: source
+      workspace: local-workspace
+  - name: deploy-service
+    taskRef:
+      kind: ClusterTask
+      name: kn-service
+    runAfter:
+      - build-image
+    resources:
+      inputs:
+      - name: image
+        resource: app-image
+    params:
+    - name: SERVICE_NAME
+      value: $(params.SERVICE_NAME)
+    - name: TARGET_PROJECT
+      value: demo-dev
+    - name: CONCURRENCY_LIMIT
+      value: "1"
+    - name: ADDITIONAL_ARGS
+      value: 
+      # - $(params.KN_ADDITIONAL_ARGS)
+      - -l
+      - "app.kubernetes.io/part-of=focus"
+    #   - -e 
+    #   - "mp.messaging.outgoing.payments.bootstrap.servers=my-cluster-kafka-bootstrap.demo-support:9092"

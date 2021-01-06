@@ -100,9 +100,9 @@ main() {
     echo "Uninstalling Kafka project $KAFKA_PROJECT"
     oc delete project "${KAFKA_PROJECT}" || true
 
-    # cicd_prj="${PROJECT_PREFIX}-cicd"
-    # echo "Uninstalling cicd project ${cicd_prj}"
-    # oc delete project "${cicd_prj}" || true
+    cicd_prj="${PROJECT_PREFIX}-cicd"
+    echo "Uninstalling cicd project ${cicd_prj}"
+    oc delete project "${cicd_prj}" || true
 
     if [[ "${full_flag:-""}" ]]; then
         echo "Uninstalling knative eventing"
@@ -133,6 +133,15 @@ main() {
         remove-operator "codeready-workspaces" || true
 
         remove-crds "checlusters.org.eclipse.che" || true
+
+        # remove gitea related resources
+        declare giteaop_prj=gpte-operators
+        echo "Removing gitea operator in ${giteaop_prj}"
+        oc delete -f $DEMO_HOME/install/gitea/gitea-operator.yaml -n ${giteaop_prj}
+        # remove CRDs and cluster roles
+        oc delete -f $DEMO_HOME/install/gitea/gitea-crd.yaml
+        oc delete -f $DEMO_HOME/install/gitea/gitea-cluster-role.yaml
+
 
         # actually wait for knative-serving to finish being deleted before we remove the operator
         oc delete namespace knative-serving || true

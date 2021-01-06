@@ -1,0 +1,1 @@
+# This directory includes possibly deprecated scripts that are used for initializing clusters created with the OpenShift installer

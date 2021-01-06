@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: ct-jib-maven-run-
+spec:
+    taskRef:
+      kind: ClusterTask
+      name: jib-maven
+    workspaces:
+    - name: source
+      persistentVolumeClaim:
+        claimName: workvol-pvc
+    params:
+    - name: DIRECTORY
+      value: "source/payment-service"
+    - name: INSECUREREGISTRY
+      value: "true"
+    - name: CACHE
+      value: cache-vol
+    resources:
+      outputs:
+      - name: image
+        resourceSpec:
+          type: image
+          params:
+          - name: url
+            value: image-registry.openshift-image-registry.svc:5000/kn-demo-dev/payment
+    podTemplate:
+      volumes:
+      - name: cache-vol
+        persistentVolumeClaim:
+          claimName: cache-pvc
+    serviceAccountName: pipeline

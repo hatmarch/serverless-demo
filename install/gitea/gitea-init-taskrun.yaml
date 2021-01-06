@@ -1,0 +1,112 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: init-gitea-
+spec:
+  taskSpec:
+    params:
+      - name: GITEA_USER
+        type: string
+        description: Gitea admin username
+        default: gitea
+      - name: GITEA_PASSWORD
+        type: string
+        description: Gitea admin password
+        default: gitea
+      - name: GITEA_SVC
+        type: string
+        description: The name of the Gitea k8 service
+        default: gitea
+      - name: REPO_NAME
+        type: string
+        description: The name the repo as it should appear in gitea
+        default: coolstore
+      - name: REPO_TO_CLONE
+        type: string
+        description: The url of the REPO to copy into gitea.
+        default: https://github.com/hatmarch/coolstore.git
+      - name: REPO_BRANCH
+        type: string
+        description: The name of the branch (or revision) to clone of REPO_TO_CLONE
+        default: "serverless-demo"
+    stepTemplate:
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+    steps:
+      - name: create-gitea-admin
+        image: quay.io/openshift/origin-cli:latest
+        script: |
+          #!/usr/bin/env bash
+
+          set -Eeuxo pipefail
+
+          #OUTPUT = $(oc exec svc/$(params.GITEA_SVC) -- /home/gitea/gitea -w /home/gitea/ -c /home/gitea/conf/app.ini admin create-user --username $(params.GITEA_USER) --password $(params.GITEA_PASSWORD) --email $(params.GITEA_USER)@gitea.com --access-token)
+          oc exec svc/$(params.GITEA_SVC) -- /home/gitea/gitea -w /home/gitea/ -c /home/gitea/conf/app.ini admin create-user --username $(params.GITEA_USER) --password $(params.GITEA_PASSWORD) --email $(params.GITEA_USER)@gitea.com \
+            --must-change-password=false --access-token
+          # TOKEN = $(grep "Access token" ${OUTPUT} | sed "s#Access token was successfully created... \(.*\)$#\1#")
+
+          # echo $TOKEN /var/tokens/token
+          # FIXME: Eventually store the token on a shared empty dir or call the proper API to 
+          # allocate it.  Instead, we use basic authentication in the next step to call the different APIs
+        # volumeMounts:
+        #   - name: token
+        #     mountPath: /var/tokens
+      - name: init-gitea
+        image: quay.io/siamaksade/python-oc
+        script: |
+          #!/usr/bin/env python3
+
+          import os
+          import requests 
+
+          gitea_user = "$(params.GITEA_USER)"
+          gitea_password = "$(params.GITEA_PASSWORD)"
+          # FIXME: Webhook url could be the name of the svc with the port at the end
+          webhookURL = "http://" + os.popen('oc get route webhook -o template --template="{{.spec.host}}"').read()
+          giteaURL = "http://" + gitea_user + ":" + gitea_password + "@" + os.popen('oc get svc $(params.GITEA_SVC) -o template --template="{{.spec.clusterIP}}"').read() + ":3000"
+          print("Gitea url is: " + giteaURL)
+          repoName = "$(inputs.params.REPO_NAME)"
+
+          # create git repo
+          data_repo = '{"clone_addr": "$(inputs.params.REPO_TO_CLONE)", "uid": 1, "repo_name": "' + repoName + '"}'
+          # headers = {"Authorization": "token ${TOKEN}", "Content-Type": "application/json" }
+          headers = {"Content-Type": "application/json"}
+          resp = requests.post(url = giteaURL + "/api/v1/repos/migrate", headers = headers, data = data_repo)  
+
+          if resp.status_code != 200 and resp.status_code != 201:
+            print("Error creating git repo (status code: {})".format(resp.status_code))
+            print(resp.content)
+          else:
+            print("Created git repo " + repoName )
+
+          #
+          # update the default branch for the petclinic repo
+          #
+          defaultBranch = "$(inputs.params.REPO_BRANCH)"
+          data_patch = '{"default_branch": "' + defaultBranch + '" }'
+          resp = requests.patch(url = giteaURL + "/api/v1/repos/" + gitea_user + "/" + repoName, headers = headers, data = data_patch)
+          
+          if resp.status_code != 200:
+            print("Error updating default branch on git repo (status code: {})".format(resp.status_code))
+            print(resp.content)
+          else:
+            print("Updated default branch on repo " + repoName + " to " + defaultBranch)
+
+          #
+          # configure webhook
+          #
+          data_webhook = '{"type": "gogs", "config": { "url": "' + webhookURL + '", "content_type": "json"}, "events": ["push"], "active": true}'
+          resp = requests.post(url = giteaURL + "/api/v1/repos/" + gitea_user + "/" + repoName + "/hooks", 
+                              headers = headers, 
+                              data = data_webhook) 
+          
+          if resp.status_code != 200 and resp.status_code != 201:
+            print("Error configuring the webhook (status code: {})".format(resp.status_code))
+            print(resp.content)
+          else:
+            print("Configured webhook: " + webhookURL)
+          
+

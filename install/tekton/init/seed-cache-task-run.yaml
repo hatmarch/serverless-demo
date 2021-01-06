@@ -1,0 +1,22 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: seed-cache-
+spec:
+  taskRef:
+    kind: ClusterTask
+    name: copy-to-workspace
+  workspaces:
+    - name: workspace
+      persistentVolumeClaim:
+        claimName: cache-pvc
+  params:
+    - name: SOURCE_DIRECTORY
+      value: "/home/jboss/.m2"
+    # where the jib-maven task mounts the workspace
+    # see: https://github.com/tektoncd/catalog/blob/master/task/jib-maven/0.1/jib-maven.yaml
+    - name: TARGET_DIRECTORY
+      value: "m2-cache"
+    - name: SOURCE_IMAGE
+      value: "quay.io/mhildenb/demo-cache:latest"
+

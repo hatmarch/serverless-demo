@@ -1,0 +1,94 @@
+# adapted from here since there is a problem getting this to write results
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: internal-git-clone
+spec:
+  workspaces:
+  - name: workvol
+    description: The git repo will be cloned onto the volume backing this workspace
+  params:
+  - name: url
+    description: git url to clone
+    type: string
+  - name: revision
+    description: git revision to checkout (branch, tag, sha, ref…)
+    type: string
+    default: master
+  - name: submodules
+    description: defines if the resource should initialize and fetch the submodules
+    type: string
+    default: "true"
+  - name: depth
+    description: performs a shallow clone where only the most recent commit(s) will be fetched
+    type: string
+    default: "1"
+  - name: sslVerify
+    description: defines if http.sslVerify should be set to true or false in the global git config
+    type: string
+    default: "false"
+  - name: subdirectory
+    description: subdirectory inside the "output" workspace to clone the git repo into
+    type: string
+    default: "src"
+  - name: deleteExisting
+    description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
+    type: string
+    default: "false"
+  - name: message
+    description: the message of the commit that triggered this checkin
+    type: string
+    default: "<none>"
+  results:
+    - name: checkout-dir
+      description: The subdirectory of the workspace that the root of the git repo has been checked out to
+    - name: raw-url
+      description: The URL pointing to top of the directory for getting raw versions of files at this revision
+  steps:
+  - name: clone
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+    script: |
+      CHECKOUT_DIR="$(workspaces.workvol.path)/$(params.subdirectory)"
+
+      echo "Build triggered by commit: $(params.message)"
+      cleandir() {
+        # Delete any existing contents of the repo directory if it exists.
+        #
+        # We don't just "rm -rf $CHECKOUT_DIR" because $CHECKOUT_DIR might be "/"
+        # or the root of a mounted volume.
+        if [[ -d "$CHECKOUT_DIR" ]] ; then
+          # Delete non-hidden files and directories
+          rm -rf "$CHECKOUT_DIR"/*
+          # Delete files and directories starting with . but excluding ..
+          rm -rf "$CHECKOUT_DIR"/.[!.]*
+          # Delete files and directories starting with .. plus any other character
+          rm -rf "$CHECKOUT_DIR"/..?*
+        fi
+      }
+
+      if [[ "$(params.deleteExisting)" == "true" ]] ; then
+        cleandir
+      fi
+
+      /ko-app/git-init \
+        -url "$(params.url)" \
+        -revision "$(params.revision)" \
+        -path "$CHECKOUT_DIR" \
+        -sslVerify="$(params.sslVerify)" \
+        -submodules="$(params.submodules)" \
+        -depth "$(params.depth)"
+      cd "$CHECKOUT_DIR"
+      RESULT_SHA="$(git rev-parse HEAD | tr -d '\n')"
+      EXIT_CODE="$?"
+      if [ "$EXIT_CODE" != 0 ]
+      then
+        exit $EXIT_CODE
+      fi
+
+      echo ${CHECKOUT_DIR} | tr -d "\n" | tee $(results.checkout-dir.path)
+
+      # create the raw URL
+      URL_BASE=$(echo $(params.url) | sed "s#\(.*\)\.git#\1#")
+      echo "Raw URL_BASE is ${URL_BASE}"
+      RAW_URL="${URL_BASE}/raw/$(params.revision)"
+      echo ${RAW_URL} | tr -d "\n" | tee $(results.raw-url.path)

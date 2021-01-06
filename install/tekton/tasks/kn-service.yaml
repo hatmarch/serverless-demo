@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: kn-service
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: cli
+spec:
+  description: >-
+    This Task performs operations on a Knative Service
+
+  params:
+  - name: kn-image
+    description: kn CLI container image to run this task
+    default: gcr.io/knative-releases/knative.dev/client/cmd/kn:latest
+    #default: quay.io/mhildenb/dev-demo-base
+  - name: ACTION
+    description: "The service action to take (NOTE: only create or update supported)"
+    default: update
+  - name: SERVICE_NAME
+    description: The name of the service being deployed
+  - name: IMAGE_TAG
+    description: "The tag of the image resource to be deployed (default: latest)"
+    default: latest
+  - name: TARGET_PROJECT
+    description: The name of the project to deploy the service to
+  - name: CONCURRENCY_LIMIT
+    description: The number of requests that can be in the service at once (default unbounded)
+    default: "0"
+  - name: ADDITIONAL_ARGS
+    type: array
+    description: kn CLI arguments to run
+    default: []
+  resources:
+    inputs:
+    - name: image
+      type: image
+  steps:
+  - name: kn
+    image: "$(params.kn-image)"
+    command: ["/ko-app/kn"]
+    args: [ "service", "$(params.ACTION)", "$(params.SERVICE_NAME)", "-n" , "$(params.TARGET_PROJECT)", "--image", "$(resources.inputs.image.url):$(params.IMAGE_TAG)", "--concurrency-limit", "$(params.CONCURRENCY_LIMIT)", "--revision-name", "{{.Service}}-{{.Generation}}", "$(params.ADDITIONAL_ARGS[*])" ]

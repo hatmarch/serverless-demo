@@ -1,0 +1,7 @@
+﻿kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: coolstore-topics-cfg
+data:
+  orders-topic-server: 'my-cluster-kafka-bootstrap.demo-support:9092'
+  payments-topic-server: 'my-cluster-kafka-bootstrap.demo-support:9092'

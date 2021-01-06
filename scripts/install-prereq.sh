@@ -56,6 +56,22 @@ command.wait_for_crd()
 # Subscribe to Operators
 #
 
+# install OpenShift Pipelines (tekton)
+echo "Installing the OpenShift Pipelines Operator"
+cat <<EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-pipelines-operator-rh
+  namespace: openshift-operators
+spec:
+  channel: ocp-4.6
+  installPlanApproval: Automatic
+  name: openshift-pipelines-operator-rh
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
 # install the serverless operator
 if [[ -n "$INSTALL_SERVERLESS" ]]; then
     echo "Installing Serverless Operator"
@@ -119,6 +135,29 @@ if [ -z "$SKIP_KAFKA_EVENTING" ]; then
 else
     echo "Skipping Kafka Eventing configuration at the user's request"
 fi
+
+#
+# Install Gitea Operator
+#
+declare giteaop_prj=gpte-operators
+echo "Installing gitea operator in ${giteaop_prj}"
+oc apply -f $DEMO_HOME/install/gitea/gitea-crd.yaml
+oc apply -f $DEMO_HOME/install/gitea/gitea-cluster-role.yaml
+oc get ns $giteaop_prj 2>/dev/null  || { 
+    oc new-project $giteaop_prj --display-name="GPTE Operators"
+}
+
+# create the service account and give necessary permissions
+oc get sa gitea-operator -n $giteaop_prj 2>/dev/null || {
+  oc create sa gitea-operator -n $giteaop_prj
+}
+oc adm policy add-cluster-role-to-user gitea-operator system:serviceaccount:$giteaop_prj:gitea-operator
+
+# install the operator to the gitea project
+oc apply -f $DEMO_HOME/install/gitea/gitea-operator.yaml -n $giteaop_prj
+sleep 2
+oc rollout status deploy/gitea-operator -n $giteaop_prj
+
 
 #
 # Ensure Kafka cluster is ready
