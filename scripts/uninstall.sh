@@ -112,8 +112,8 @@ main() {
         oc delete namespace knative-eventing || true
 
         echo "Uninstalling knative serving"
-        oc delete knativeservings.operator.knative.dev knative-serving -n knative-serving || true
         oc delete ingresses.networking.internal.knative.dev --all -n knative-serving || true
+        oc delete knativeservings.operator.knative.dev knative-serving -n knative-serving || true
  
         # note, it takes a while to remove the namespace.  Move on to other things before we wait for the removal
         # of this project below
