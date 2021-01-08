@@ -1,0 +1,30 @@
+# syntax = docker/dockerfile:1.0-experimental
+
+# NOTE because of the special command line flags (e.g --secret) that need to be passed
+# to the docker build process, we are not able to put these commands in the dockerfile 
+# for the devcontainer
+FROM quay.io/mhildenb/dev-demo-base:1.4
+
+USER root
+
+# install docker for use with kn func
+RUN --mount=type=secret,id=myuser --mount=type=secret,id=mypass \
+    subscription-manager register  --username=$(cat /run/secrets/myuser) \
+    --password=$(cat /run/secrets/mypass) --auto-attach
+
+# This whole RUN block is to install the docker client
+RUN microdnf -y install yum && yum install -y yum-utils && \
+# install docker repo
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && \
+# install docker client
+    yum install -y docker-ce-cli && \
+# cleanup packages and yum
+    yum remove -y yum-utils && yum clean all && microdnf -y remove yum && microdnf clean all
+
+RUN subscription-manager unregister
+
+USER jboss
+
+# Default DEMO_HOME directory
+ENV DEMO_HOME /workspaces/serverless-demo
+

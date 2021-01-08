@@ -1,6 +1,4 @@
-FROM quay.io/mhildenb/dev-demo-base:1.4
-
-USER root
+FROM quay.io/mhildenb/kn-demo-base:latest
 
 USER jboss
 
