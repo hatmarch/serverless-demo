@@ -4,130 +4,53 @@
 :toc:
 :toclevels: 4
 
-
-== Setup Prerequisites ==
-
+== Installing Demo ==
 [IMPORTANT]
 ====
-* Before running any script commands, make sure the run the following in the appropriate shell
-+
-----
-. scripts/shell-setup.sh
-----
-+
-* Make sure you have a user1-cloudnativeapps namespace (the install script will run this)
-+
-----
-oc new-project user1-cloudnativeapps
-----
+To limit the amount of incompatibility in setting up the demo, all the commands that are listed are expected to be run in an appropriately setup container.  You will find this as part of the instructions below and it's important not to skip this step
+
+This demo also supports the link:https://code.visualstudio.com/docs/remote/containers[VS Code Remote Development (Containers)] as can be seen in the .devcontainer directory.  If you use the terminal in VSCode and run this repo in a container, then you don't need to follow the commands to run docker in the shell as your terminal will already be running in a container that has all the necessary runtime components
 ====
 
-== Preparing Cluster ==
+. Fork or clone this repo onto your local machine
+. `cd` to the root of the folder
+. Run the following command:
+** NOTE: If you are not using `zsh` locally, you can omit the `-v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh` part of the `docker run` command below
++
+----
+docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+----
++
+. Be sure to log into your OpenShift cluster with cluster-admin permissions
+. OPTIONALLY override `PROJECT_PREFIX` to the name prefix name you'd like the projects associated with this demo to have (default:`kn-demo`)
+. Run the following command to setup the demo:
+** `-i` flag sets up all pre-requisites
+** `-p` is not necessary if you don't want to change the default `PROJECT_PREFIX`
+** `-s` [optional] Skip installation of the Serverless Operator (to allow it being done manually for sake of demonstration)
++
+----
+$DEMO_HOME/scripts/create-demo.sh -p $PROJECT_PREFIX -i
+----
++
+. If the installation was successful, you should see the following:
++
+----
+Demo installation completed without error.
+Finishing with return value of 0
+----
++
+. Once completed, you can now follow the instructions link:walkthrough/demo-walkthrough.adoc[in this walkthrough]
 
-. To get the cluster ready for the link:demo-walkthrough.adoc[] you will need to run the following script.  Setup can take more than 10 minutes to complete (especially on crc clusters running locally on a laptop)
-+
+== Uninstalling the Demo ==
+
+You can remove the aspects from this demo from your cluster by running the following command (from within the container that was setup above)
+
+* The `-p` flag is not necessary if you haven't changed the `PROJECT_PREFIX` from the default
+* [red]#The `-f` flag will remove all the operators (and associated CRDs) that were installed to support the demo.  This could be an issue if you have other things in the cluster using these resources (e.g. Serverless).  If you only want the projects associated with the demo to be removed and not all the prerequisite operators, omit the `-f` flag#
+
 ----
-$DEMO_HOME/scripts/install-prereq.sh
-----
-+
-. Check that everything is installed correctly:
-+
-Kafka is installed correctly once you see the following pods
-+
-----
-my-cluster-kafka-0                                    2/2     Running     0          94s
-my-cluster-kafka-1                                    2/2     Running     0          94s
-my-cluster-kafka-2                                    2/2     Running     0          94s
-my-cluster-zookeeper-0                                2/2     Running     0          4m13s
-my-cluster-zookeeper-1                                2/2     Running     0          4m13s
-my-cluster-zookeeper-2                                2/2     Running     0          4m12s
-----
-+
-. Check the knative-serving project with this command:
-+
-----
-oc get pods -n knative-serving -w
-----
-+
-A successful serverless install will show the following pods in knative-serving namespace:
-+
-----
-NAME                                READY   STATUS    RESTARTS   AGE
-activator-dfb5b7b67-hh5kh           1/1     Running   0          79s
-autoscaler-85bb4898c5-5sssb         1/1     Running   0          77s
-autoscaler-hpa-865b6d49b7-7sqns     1/1     Running   0          78s
-controller-65c8dd48d6-5cl9v         1/1     Running   0          73s
-networking-istio-7c9fb7dd4c-lsbdm   1/1     Running   0          73s
-webhook-95969d4fc-t9d4v             1/1     Running   0          72s
+$DEMO_HOME/scripts/uninstall.sh -f -p $PROJECT_PREFIX
 ----
 
 == Appendix ==
 
-=== Installing Knative Kafka Eventing ===
-
-NOTE: This is done by default by the install-prereq.sh script, but is outlined here if you'd like to show off operators after the fact.  To have the script skip the installation of this operator then run the install-prereq.sh script with the `--skip-knative-kafka-eventing` flag.
-
-. First subscribe to the operator
-+
-----
-oc apply -f "$DEMO_HOME/install/kafka-eventing/subscription.yaml"
-----
-+
-.. ALTERNATIVELY, this can also be done manually.  In user1-cloudnativeapps go to *Operators > Operator Hub* to find it
-+
-image:kafka-event-operator.png[]
-+
-. Then install the operator with the default values (e.g. across whole cluster)
-+
-. Track installation with this command:
-+
-----
-watch 'oc get csv -n user1-cloudnativeapps -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt'
-----
-+
-. and wait until you see:
-+
-----
-NAME                                VERSION   PHASE
-amqstreams.v1.4.0                   1.4.0     Succeeded
-knative-eventing-operator.v0.13.0   0.13.0    Succeeded
-knative-kafka-operator.v0.13.2      0.13.2    Succeeded
-serverless-operator.v1.6.0          1.6.0     Succeeded
-----
-
-=== Monitoring Installation Progress ===
-
-Open a new terminal and start a watch on the command oc get csv -n openshift-operators. For further reference in the setup we will call this terminal as WATCH_WINDOW.
-
-----
-watch 'oc get csv -ocustom-columns-file=$DEMO_HOME/install/csv-columns.txt -n openshift-operators' 
-----
-
-==== Monitoring Kafka Cluster Installation ====
-
-You can tail the logs of the amqstreams operator's logs to determine why an installation is taking so long:
-
-----
-stern -l "name=amq-streams-cluster-operator" -n openshift-operators
-----
-
-NOTE: stern is installed in the .devcontainer that is in the root of this repo.  If you open the repository folder in a container (using vscode remote) stern is installed on the container.
-
-=== Missing Operator Catalogs ===
-
-If you cannot find the operators referenced then run the following on your cluster
-
-----
-oc apply -f "$DEMO_HOME/install/redhat-operators-csc.yaml" \
-  -f "$DEMO_HOME/install/community-operators-csc.yaml"
-
-oc -n openshift-marketplace get csc
-----
-
-A successful reconciliation should show an output like:
-
-----
-NAME                           STATUS      MESSAGE                                       AGE
-community-operators-packages   Succeeded   The object has been successfully reconciled   62s
-redhat-operators-packages      Succeeded   The object has been successfully reconciled   62s
-----
