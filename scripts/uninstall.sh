@@ -67,11 +67,11 @@ remove-operator()
     OPERATOR_NAME=$1
     OPERATOR_PROJECT=${2:-"openshift-operators"}
 
-    echo "Uninstalling operator: ${OPERATOR_NAME}"
+    echo "Uninstalling operator: ${OPERATOR_NAME} from project ${OPERATOR_PROJECT}"
     # NOTE: there is intentionally a space before "currentCSV" in the grep since without it f.currentCSV will also be matched which is not what we want
-    CURRENT_SERVERLESS_CSV=$(oc get sub ${OPERATOR_NAME} -n ${OPERATOR_PROJECT} -o yaml | grep " currentCSV:" | sed "s/.*currentCSV: //")
+    CURRENT_CSV=$(oc get sub ${OPERATOR_NAME} -n ${OPERATOR_PROJECT} -o yaml | grep " currentCSV:" | sed "s/.*currentCSV: //")
     oc delete sub ${OPERATOR_NAME} -n ${OPERATOR_PROJECT}
-    oc delete csv ${CURRENT_SERVERLESS_CSV} -n ${OPERATOR_PROJECT}
+    oc delete csv ${CURRENT_CSV} -n ${OPERATOR_PROJECT}
 }
 
 remove-crds() 
@@ -103,6 +103,12 @@ main() {
     cicd_prj="${PROJECT_PREFIX}-cicd"
     echo "Uninstalling cicd project ${cicd_prj}"
     oc delete project "${cicd_prj}" || true
+
+    # delete the checluster before deleting the codeready project
+    oc delete checluster --all -n codeready || true
+
+    # delete the codeready project as well as any projects created for a given user
+    oc get project -o name | grep codeready | xargs oc delete || true
 
     if [[ "${full_flag:-""}" ]]; then
         echo "Uninstalling knative eventing"
@@ -137,11 +143,11 @@ main() {
         # remove gitea related resources
         declare giteaop_prj=gpte-operators
         echo "Removing gitea operator in ${giteaop_prj}"
-        oc delete -f $DEMO_HOME/install/gitea/gitea-operator.yaml -n ${giteaop_prj}
+        oc delete -f $DEMO_HOME/install/gitea/gitea-operator.yaml -n ${giteaop_prj} || true
         # remove CRDs and cluster roles
-        oc delete -f $DEMO_HOME/install/gitea/gitea-crd.yaml
-        oc delete -f $DEMO_HOME/install/gitea/gitea-cluster-role.yaml
-
+        oc delete -f $DEMO_HOME/install/gitea/gitea-crd.yaml || true
+        oc delete -f $DEMO_HOME/install/gitea/gitea-cluster-role.yaml || true
+        oc delete project $giteaop_prj || true
 
         # actually wait for knative-serving to finish being deleted before we remove the operator
         oc delete namespace knative-serving || true
@@ -150,26 +156,6 @@ main() {
         oc delete namespace "openshift-serverless" || true
     fi
 
-    # delete the checluster before deleting the codeready project
-    oc delete checluster --all -n codeready || true
-
-    # delete the codeready project as well as any projects created for a given user
-    oc get project -o name | grep codeready | xargs oc delete || true
-
-    # stage_prj="${PROJECT_PREFIX}-stage"
-    # echo "Deleting project $stage_prj"
-    # oc delete project "${stage_prj}" || true
-    
-    # dev_prj="${PROJECT_PREFIX}-dev"
-    # echo "Deleting project $dev_prj"
-    # oc delete project "${dev_prj}" || true
-
-    # echo "Uninstalling support project $KAFKA_PROJECT"
-    # oc delete project "${KAFKA_PROJECT}" || true
-
-    # cicd_prj="${PROJECT_PREFIX}-cicd"
-    # echo "Uninstalling cicd project ${cicd_prj}"
-    # oc delete project "${cicd_prj}" || true
 }
 
 main "$@"
