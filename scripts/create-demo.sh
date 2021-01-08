@@ -74,10 +74,6 @@ main() {
         oc new-project $dev_prj
     }
 
-    echo "Initiatlizing git repository in gitea and configuring webhooks"
-    oc apply -f $DEMO_HOME/install/gitea/gitea-server-cr.yaml -n $cicd_prj
-    # we'll check back on gitea in a moment.  We'll do some other setup whilst waiting
- 
     # Install pre-reqs before tekton
     if [[ -n "${prereq_flag:-}" ]]; then
         if [[ -n "${skipserverless_flag:-}" ]]; then
@@ -91,6 +87,10 @@ main() {
     else
         echo "Skipping pre-requisite installation"
     fi
+
+    echo "Initiatlizing git repository in gitea and configuring webhooks"
+    oc apply -f $DEMO_HOME/install/gitea/gitea-server-cr.yaml -n $cicd_prj
+    # we'll check back on gitea in a moment.  We'll do some other setup whilst waiting
 
     echo "Installing CodeReady Workspaces"
     ${SCRIPT_DIR}/install-crw.sh codeready
