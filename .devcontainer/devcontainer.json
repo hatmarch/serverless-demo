@@ -14,11 +14,16 @@
 		"-v", "${env:HOME}/.oh-my-zsh:/home/jboss/.oh-my-zsh",
 		"-v", "${env:HOME}/.helm:/home/jboss/.helm",
 		"-v", "${env:HOME}/.ssh:/home/jboss/.ssh",
+
+		// Ensure that the m2 cache persists
+		"-v", "${localWorkspaceFolder}/.m2/:/home/jboss/.m2",
+
 		// Used for AWS based clusters
 		"-e", "AWS_PROFILE=redhat",
 		"-e", "REGION=ap-southeast-2"
 		//"AWS_PROFILE=${env:AWS_PROFILE}"
 	],
+	"postStartCommand": "rsync -a .devcontainer/workspace-setup/ ${containerWorkspaceFolder}/.vscode/ --ignore-existing",
 	"extensions": [
 		"vscjava.vscode-java-pack",
 		"redhat.vscode-xml",
@@ -32,6 +37,12 @@
 		"java.home": "/usr/lib/jvm/java-11",
 		"http.proxyStrictSSL": false,
 		"workbench.tips.enabled": false,
-		"workbench.colorTheme": "Monokai"
+		"workbench.colorTheme": "Monokai",
+		"files.exclude": {
+			"**/.classpath": true,
+			"**/.project": true,
+			"**/.settings": true,
+			"**/.factorypath": true,
+            "**/.m2": true,
 	}
 }
