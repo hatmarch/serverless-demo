@@ -16,10 +16,10 @@ fi
 export DEMO_HOME=$( cd "$(dirname "${SCRIPT}")/.." ; pwd -P )
 
 echo "DEMO_HOME set to $DEMO_HOME"
-DEFAULT_PREFIX=${PROJECT_PREFIX:-kn-demo}
-echo "Default project prefix is ${DEFAULT_PREFIX}"
-export dev_prj="${DEFAULT_PREFIX}-dev"
-export cicd_prj="${DEFAULT_PREFIX}-cicd"
+PROJECT_PREFIX=${PROJECT_PREFIX:-kn-demo}
+echo "Project prefix is ${PROJECT_PREFIX}"
+export dev_prj="${PROJECT_PREFIX}-dev"
+export cicd_prj="${PROJECT_PREFIX}-cicd"
 echo "Default dev project is ${dev_prj} and default cicd project is $cicd_prj"
 
 alias cpr='tkn pr cancel $(tkn pr list -o name --limit 1 | cut -f 2 -d "/")'
