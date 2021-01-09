@@ -10,3 +10,4 @@ coolstore-ui/tmp
 
 .vscode
 docker-secrets/
+.m2/
