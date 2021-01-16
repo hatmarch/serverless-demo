@@ -102,6 +102,7 @@ main() {
 
     cicd_prj="${PROJECT_PREFIX}-cicd"
     echo "Uninstalling cicd project ${cicd_prj}"
+    oc delete all --all -n ${cicd_prj}
     oc delete project "${cicd_prj}" || true
 
     # delete the checluster before deleting the codeready project
