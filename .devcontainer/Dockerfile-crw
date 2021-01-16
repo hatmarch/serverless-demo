@@ -1,0 +1,18 @@
+# FROM quay.io/mhildenb/crw-maven:1.3.3-b
+FROM registry.redhat.io/codeready-workspaces/stacks-dotnet-rhel8@sha256:a61038e596c0c6104ae86cf4c5af5c60a6126feefa6e6585c540de2c48b723a2 AS crw-reference
+
+FROM quay.io/mhildenb/kn-demo-shell:latest
+
+USER root
+
+# Entrypoint script looks at this file
+RUN chmod g+w /etc/group
+
+USER jboss
+
+COPY --from=crw-reference /home/jboss /home/jboss
+
+CMD [ "/bin/sh", "-c", "tail -f /dev/null" ]
+
+ENTRYPOINT [  "/home/jboss/entrypoint.sh" ]
+
