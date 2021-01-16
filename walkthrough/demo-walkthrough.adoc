@@ -10,6 +10,81 @@
 See link:demo-setup.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
 ====
 
+== Knative Functions
+
+. Clone the git repo of the openshift cluster as a submodule of the VS Code project
++
+----
+git submodule add -b serverless-demo https://$(oc get route gitea -o jsonpath='{.spec.host}' -n $PROJECT_PREFIX-cicd)/gitea/coolstore func
+----
++
+. Create a directory into which to create the function
++
+----
+mkdir -p func/payment-func
+cd func/payment-func
+----
++
+. Initialize the function
++
+----
+kn func create -l quarkus -t events
+----
++
+TODO: Fill in editing and local running steps
++
+. Deploy the function using the following command
++
+----
+kn func deploy -v -n $PROJECT_PREFIX-dev
+----
++
+. By default the function is set to have a 200Mi limit of memory which appears to be too little for the quarkus function.  If you notice OOMKilled errors or just want to be safe, run this command to increase the function's memory limits (via the knative service)
++
+----
+# replace this with the name of your function
+FUNC_SVC_NAME=payment--func
+kn service update $FUNC_SVC_NAME --limit 'memory=400Mi' -n $PROJECT_PREFIX-dev
+----
++
+. Create the kafka event source using this command:
+** [red]#NOTE: The UI for kafka event sources appears to be broken#
++
+----
+oc apply -f $DEMO_HOME/install/knative-eventing/orders-event-source.yaml
+----
++
+. Ensure that old payment service is not longer running or attached to knative event
++
+. Make sure you have a shell that is showing the payment messages:
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n kn-demo-dev -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
++
+. Purchase an item from the website as you would do normally.
+
+=== Run Funcion Locally
+
+[red]#These instructions need to be updated for the kafka producer side of things: it's not simple as a port-forward
+
+. To run locally, it's important to add a profile that overrides the kafka bootstrapper property location.  In `application.properties` add the following
++
+----
+%dev.mp.messaging.outgoing.payments.bootstrap.servers=localhost:9092
+----
++
+. Then forward to the kafka bootstrapper
+----
+oc port-forward svc/my-cluster-kafka-bootstrap 9092:9092 -n ${PROJECT_PREFIX}-dev
+----
++
+. Show messages as they appear in the payment queue
++ 
+----
+oc exec -c kafka my-cluster-kafka-0 -n ${PROJECT_PREFIX}-dev -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
+
 == Payment Service on CRC 
 
 In this section well show a payment service that is running to poll the kafka 

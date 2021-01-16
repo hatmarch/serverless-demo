@@ -1,0 +1,30 @@
+# POST http://localhost:8080
+# Content-type: application/json
+# Ce-id: 1
+# Ce-source: cloud-event-example
+# Ce-type: dev.knative.example
+# Ce-specversion: 1.0
+
+# {
+#     "message": "hello world",
+#     "somethingElse": "goodbye cruel world"
+# }
+
+
+POST http://localhost:8080
+Content-type: application/json
+Ce-id: 1
+Ce-source: cloud-event-orders
+Ce-type: dev.knative.example
+Ce-specversion: 1.0
+
+{
+    "orderId": "12321",
+    "total": "232.23", 
+    "creditCard": 
+        {"number":"4232454678667866",
+        "expiration": "04/22",
+        "nameOnCard": "Jane G Doe"}, 
+    "billingAddress": "123 Anystreet, Pueblo, CO 32213", 
+    "name": "Jane Doe"
+}
