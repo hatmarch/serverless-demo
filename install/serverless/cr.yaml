@@ -25,7 +25,7 @@ spec:
     defaults:
       revision-cpu-limit: 1000m
       revision-cpu-request: 400m
-      revision-memory-limit: 200M
+      revision-memory-limit: 400M
       revision-memory-request: 100M
       revision-timeout-seconds: '300'
     deployment:
