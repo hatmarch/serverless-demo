@@ -33,6 +33,12 @@ objects:
           port: 9093
           type: internal
           tls: true
+        # This is used for accessing the kafka cluster locally.  Port forwarding doesn't 
+        # appear to work
+        - name: external
+          port: 9094
+          type: route
+          tls: true
       config:
         offsets.topic.replication.factor: ${{REPLICA_COUNT}}
         transaction.state.log.replication.factor: ${{REPLICA_COUNT}}
