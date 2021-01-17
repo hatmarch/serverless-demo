@@ -95,6 +95,9 @@ main() {
     echo "Installing CodeReady Workspaces"
     ${SCRIPT_DIR}/install-crw.sh codeready
 
+    echo "Installing Image Puller (for CRW)"
+    ${SCRIPT_DIR}/install-image-puller.sh codeready
+
     # 
     # Install Tekton resources
     #

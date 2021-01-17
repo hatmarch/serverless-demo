@@ -4,6 +4,13 @@ declare -r SCRIPT_DIR=$(cd -P $(dirname $0) && pwd)
 
 declare TARGET_PROJECT="${1:-codeready}"
 
+# this is the name of the OpenShift user that will be creating a CRW for the demo
+declare DEMO_USERNAME="${2:-opentlc-mgr}"
+
+# the name of a special scc that the workspace service account will need access to in order to create any pods in the 
+# workspace devcontainer
+declare SPECIAL_WORKSPACE_SCC="${3:-hostmount-anyuid}"
+
 # Create project
 oc get ns $TARGET_PROJECT 2>/dev/null  || { 
     oc new-project $TARGET_PROJECT
@@ -71,6 +78,14 @@ while [ 1 ]; do
   echo -n .
   sleep 10
 done
+
+if [[ -n "${SPECIAL_WORKSPACE_SCC:-}" ]]; then
+  echo "Giving che-workspace service account in ${DEMO_USERNAME}-codeready ${SPECIAL_WORKSPACE_SCC} permissions.  (Assuming demo user is ${DEMO_USERNAME})"
+  oc adm policy add-scc-to-user ${SPECIAL_WORKSPACE_SCC} system:serviceaccount:${DEMO_USERNAME}-codeready:che-workspace
+fi
+
+# NOTE: Can check using this command:
+# oc adm policy who-can use scc ${SPECIAL_WORKSPACE_SCC}
 
 # # Import stack definition
 # echo "Getting token"

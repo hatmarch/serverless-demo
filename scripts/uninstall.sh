@@ -102,13 +102,27 @@ main() {
 
     cicd_prj="${PROJECT_PREFIX}-cicd"
     echo "Uninstalling cicd project ${cicd_prj}"
+    oc delete all --all -n ${cicd_prj}
     oc delete project "${cicd_prj}" || true
 
     # delete the checluster before deleting the codeready project
     oc delete checluster --all -n codeready || true
 
-    # delete the codeready project as well as any projects created for a given user
-    oc get project -o name | grep codeready | xargs oc delete || true
+    # remove image puller resources
+    oc delete KubernetesImagePuller --all -n codeready || true
+
+    # delete projects created for codeready workspaces projects
+    oc get project -o name | grep -- -codeready | xargs oc delete || true
+
+    remove-operator "codeready-workspaces" || true
+
+    remove-crds "checlusters.org.eclipse.che" || true
+
+    remove-operator "kubernetes-imagepuller-operator" || true
+
+    remove-crds "kubernetesimagepuller" || true
+
+    oc delete project codeready || true
 
     if [[ "${full_flag:-""}" ]]; then
         echo "Uninstalling knative eventing"
