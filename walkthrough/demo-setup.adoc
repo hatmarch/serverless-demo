@@ -22,6 +22,18 @@ docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run
 ----
 +
 . Be sure to log into your OpenShift cluster with cluster-admin permissions
+. Check to make sure your cluster's version is >= 4.6.8
++
+----
+oc get clusterversion --no-headers | awk '{print $2}'
+----
++
+.. [red]#If clusterversion is < 4.6.8 then run this command (see link:https://docs.openshift.com/container-platform/4.6/updating/updating-cluster-cli.html#update-upgrading-cli_updating-cluster-cli[here] for more details):#
++
+----
+oc admin upgrade --to-latest
+----
++
 . OPTIONALLY override `PROJECT_PREFIX` to the name prefix name you'd like the projects associated with this demo to have (default:`kn-demo`)
 . Run the following command to setup the demo:
 ** `-i` flag sets up all pre-requisites
@@ -29,7 +41,7 @@ docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run
 ** `-s` [optional] Skip installation of the Serverless Operator (to allow it being done manually for sake of demonstration)
 +
 ----
-$DEMO_HOME/scripts/create-demo.sh -p $PROJECT_PREFIX -i
+$DEMO_HOME/scripts/create-demo.sh -i -p $PROJECT_PREFIX
 ----
 +
 . If the installation was successful, you should see the following:
