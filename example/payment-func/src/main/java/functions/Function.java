@@ -1,14 +1,16 @@
 package functions;
 
-import javax.inject.Inject;
-
 import io.quarkus.funqy.Context;
 import io.quarkus.funqy.Funq;
 import io.quarkus.funqy.knative.events.CloudEvent;
+import javax.inject.Inject;
+import io.vertx.core.json.JsonObject;
+
+
 
 import org.eclipse.microprofile.reactive.messaging.Channel;
 import org.eclipse.microprofile.reactive.messaging.Emitter;
-import io.vertx.core.json.JsonObject;
+
 
 
 public class Function {
