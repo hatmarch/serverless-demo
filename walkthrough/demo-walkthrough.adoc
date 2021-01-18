@@ -10,6 +10,71 @@
 See link:demo-setup.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
 ====
 
+This demo centers around the conversion of a traditional (payment) service into one that is implemented serverless-ly.  It supports the "Coolstore" website the relevant architecture of which can be seen here:
+
+image:coolstore-arch.png[]
+
+== Setup Tips Prior to Walkthrough ==
+
+* [OPTIONAL] Open CodeReadyWorkspaces with the devfile to ensure it is initialized at least once
+** _This demo has image pre-pull support so the startup time should not be so bad_
+* VSCode in the Desktop to the right of the main demo desktop
+
+
+=== Desktops
+
+==== Desktop 0
+
+This should be offscreen
+
+. *Hidden Shell*: This is the shell for running support commands that would otherwise confuse the demo
+.. Go to the root of the `serverless-demo` directory on your local machine
+.. Run the same docker command from before
++
+----
+docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+----
++
+.. Ensure you are logged in as a `cluster-admin`
+
+==== Desktop 1 (Main)
+
+. *Shell 1*: This will be the main shell for commands to run
+.. Go to the root of the `serverless-demo` directory on your local machine
+.. Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
++
+----
+docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+----
++
+.. Ensure you are logged in as a `cluster-admin`
+. *Window 1*: Chrome with the following tabs
+.. Topology view of the Dev Project
+.. Cluster's Gitea home (logged in)
+. *Window 2*: Have a second window with the following tabs
+.. Pipelines view of the kn-demo-cicd project to look for pipeline runs
++
+. *Kafka Shell*: This will be used to show what's coming through the payment queue
+.. Go to the root of the `serverless-demo` directory on your local machine
+.. Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
++
+----
+docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+----
++
+.. Ensure you are logged in as a `cluster-admin`
+.. Run this command to watch the queue
++
+----
+ oc exec -c kafka my-cluster-kafka-0 -n $dev_prj -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
+
+==== Desktop 2 (VSCode)
+
+. Have VSCode opened (remote) at the root of the `serverless-demo` directory.
+
+== Installing Knative Serverless
+
 == Creating Knative Service
 
 . Set the payment-traditional service down to 0
