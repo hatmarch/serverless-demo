@@ -21,7 +21,6 @@ public class PaymentResource {
     @Inject @Channel("payments") Emitter<String> paymentEmitter;
 
     @POST
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     public void handleCloudEvent(String cloudEventJson) {
         String orderId = "unknown";
