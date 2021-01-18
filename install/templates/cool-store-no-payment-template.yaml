@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: kafka-instance-template
+  name: coolstore-template
   annotations:
-    description: "Template for the creation of a Kafka cluster"
+    description: "Template for the creation of coolstore"
 parameters:
 - description: The name of the project
   displayName: Name of the project
