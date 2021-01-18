@@ -70,4 +70,22 @@ aws-down() {
         $(aws ec2 describe-instances --region ${AWS_REGION} --query 'Reservations[*].Instances[*].{Instance:InstanceId}' --output text --filters "Name=tag-key,Values=kubernetes.io/cluster/${CLUSTER_NAME}-*" "Name=instance-state-name,Values=running") 
 }
 
+
+EXTERNAL_KAFKA_ENDPOINT=$(oc get kafka my-cluster -o=jsonpath='{.status.listeners[?(@.type=="external")].bootstrapServers}{"\n"}' -n $dev_prj 2>/dev/null)
+if [[ -n ${EXTERNAL_KAFKA_ENDPOINT} ]]; then
+    echo "Setting up local environment to reach kafka cluster"
+        
+    # Get cert info for truststore to use when accessing Kafka endpoint
+    oc extract secret/my-cluster-cluster-ca-cert -n $dev_prj --keys=ca.crt --to=- > /tmp/ca.crt
+    keytool -import -trustcacerts -alias root -file /tmp/ca.crt -keystore $DEMO_HOME/docker-secrets/truststore.jks -storepass password -noprompt
+
+    # override configuration variables for use with config functionality in quarkus payment service
+    export mp_messaging_outgoing_payments_bootstrap_servers=${EXTERNAL_KAFKA_ENDPOINT}
+    export mp_messaging_incoming_orders_bootstrap_servers=${EXTERNAL_KAFKA_ENDPOINT}
+else
+    echo "WARNING: No external kafka cluster could be found at $(oc whoami --show-server 2>/dev/null)"
+fi
+
+
+
 echo "Welcome to the serverless-demo!"
