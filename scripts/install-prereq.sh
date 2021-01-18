@@ -95,10 +95,10 @@ command.wait_for_crd "crd/kafkas.kafka.strimzi.io"
 
 if [ -z "$FOR_CRC" ]; then
     # use the default parameter values
-    oc process -f "$DEMO_HOME/install/kafka/kafka-template.yaml" | oc apply -f -
+    oc process -f "$DEMO_HOME/install/kafka/kafka-template.yaml" | oc apply -n ${KAFKA_PROJECT} -f -
 else
     # install lighter weight cluster on CRC
-    oc process -f "$DEMO_HOME/install/kafka/kafka-template.yaml" -p REPLICA_COUNT=1 -p MIN_ISR=1 | oc apply -f -
+    oc process -f "$DEMO_HOME/install/kafka/kafka-template.yaml" -p REPLICA_COUNT=1 -p MIN_ISR=1 | oc apply -n ${KAFKA_PROJECT} -f -
 fi
 
 # # install the necessary kafka instance and topics
