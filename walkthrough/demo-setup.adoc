@@ -18,7 +18,7 @@ This demo also supports the link:https://code.visualstudio.com/docs/remote/conta
 ** NOTE: If you are not using `zsh` locally, you can omit the `-v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh` part of the `docker run` command below
 +
 ----
-docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
 ----
 +
 . Be sure to log into your OpenShift cluster with cluster-admin permissions
