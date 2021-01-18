@@ -77,7 +77,12 @@ if [[ -n ${EXTERNAL_KAFKA_ENDPOINT} ]]; then
         
     # Get cert info for truststore to use when accessing Kafka endpoint
     oc extract secret/my-cluster-cluster-ca-cert -n $dev_prj --keys=ca.crt --to=- > /tmp/ca.crt
-    keytool -import -trustcacerts -alias root -file /tmp/ca.crt -keystore $DEMO_HOME/docker-secrets/truststore.jks -storepass password -noprompt
+    KEYSTORE_FILE="$DEMO_HOME/docker-secrets/truststore.jks"
+    if [[ -f $KEYSTORE_FILE ]]; then
+        echo "Removing old keystore file at $KEYSTORE_FILE prior to import"
+        rm -f $KEYSTORE_FILE
+    fi
+    keytool -import -trustcacerts -alias root -file /tmp/ca.crt -keystore $KEYSTORE_FILE -storepass password -noprompt
 
     # override configuration variables for use with config functionality in quarkus payment service
     export mp_messaging_outgoing_payments_bootstrap_servers=${EXTERNAL_KAFKA_ENDPOINT}
