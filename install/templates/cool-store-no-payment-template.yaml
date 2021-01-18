@@ -471,7 +471,8 @@ objects:
     annotations:
       nodeshift/git-branch: master
       nodeshift/git-commit: 149f1045bdf09b6109c60dfe5292e42722e91b3b
-      app.openshift.io/connects-to: inventory,order,catalog,cart
+      app.openshift.io/connects-to: >-
+        ["inventory","order","catalog","cart",{"apiVersion":"apps/v1","kind":"Deployment","name":"payment-traditional"}]
     creationTimestamp: "2019-11-19T12:02:13Z"
     generation: 2
     labels:
