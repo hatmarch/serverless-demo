@@ -161,14 +161,14 @@ main() {
     echo "Installing coolstore website (minus payment)"
     oc process -f $DEMO_HOME/install/templates/cool-store-no-payment-template.yaml -p PROJECT=$dev_prj | oc apply -f - -n $dev_prj
 
-    # FIXME: This should not be necessary based on recent changes to the template
-    # echo "Correcting routes"
-    # oc project $dev_prj
-    # $DEMO_HOME/scripts/route-fix.sh
-
     echo "updating all images"
     # Fix up all image streams by pointing to pre-built images (which should trigger deployments)
     $DEMO_HOME/scripts/image-stream-setup.sh
+
+    echo "Installing initial (traditional) payment service"
+    oc process -f $DEMO_HOME/install/templates/payment-alone.yaml -p PROJECT=$dev_prj | oc apply -f - -n $dev_prj
+
+    echo "NOTE: reopen terminal to setup environment variables for accessing kafka cluster externally"
 
     echo "Demo installation completed without error."
 }
