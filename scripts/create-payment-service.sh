@@ -12,6 +12,7 @@ declare CONTAINER_IMAGE="homemade-serverless-java"
 declare IMAGE_TAG="initial-service-1.0"
 declare REGISTRY_USERNAME="$GROUP"
 declare REGISTRY_PASSWORD=""
+declare NATIVE=""
 
 display_usage() {
 cat << EOF
@@ -27,6 +28,7 @@ $0: Create Payment Service --
     -t <TEXT>  [optional] Tag for container image.  Defaults to $IMAGE_TAG
     -p <TEXT>  [optional] Password to access registry
     -u <TEXT>  [optional] User for the registry.  Defaults to $REGISTRY_USERNAME
+    -n         [optional] Create a native image
 
 EOF
 }
@@ -44,14 +46,15 @@ get_and_validate_options() {
 
   
   # parse options
-  while getopts ':p:r:g:c:t:u:h' option; do
+  while getopts ':p:r:g:c:t:u:hn' option; do
       case "${option}" in
           r  ) reg_flag=true; REGISTRY="${OPTARG}";;
           g  ) group_flag=true; GROUP="${OPTARG}";;
-          c  ) container_flag=true; CONTAINER_IMAGE="{OPTARG}";;
+          c  ) container_flag=true; CONTAINER_IMAGE="${OPTARG}";;
           t  ) tag_flag=true; IMAGE_TAG=${OPTARG};;
           u  ) user_flag=true; REGISTRY_USERNAME=${OPTARG};;
           p  ) password_flag=true; REGISTRY_PASSWORD="${OPTARG}";;
+          n  ) native_flag=true; NATIVE="-Pnative";;
           h  ) display_usage; exit;;
           \? ) printf "%s\n\n" "  Invalid option: -${OPTARG}" >&2; display_usage >&2; exit 1;;
           :  ) printf "%s\n\n%s\n\n\n" "  Option -${OPTARG} requires an argument." >&2; display_usage >&2; exit 1;;
@@ -79,7 +82,7 @@ main() {
     cd $DEMO_HOME/coolstore/payment-service
 
     MAVEN_CMD=$(cat <<EOF
-mvn -B package -DskipTests -Dquarkus.container-image.build=true \
+mvn -B package -DskipTests $NATIVE -Dquarkus.container-image.build=true \
         -Dquarkus.container-image.push=true \
         -Dquarkus.jib.base-jvm-image=gcr.io/distroless/java:11 \
         -Dquarkus.container-image.registry=${REGISTRY} \
@@ -88,13 +91,14 @@ mvn -B package -DskipTests -Dquarkus.container-image.build=true \
         -Dquarkus.container-image.tag=${IMAGE_TAG}
 EOF
 )
-    echo "MAVEN_CMD is $MAVEN_CMD"
+
+#    echo "MAVEN_CMD is $MAVEN_CMD"
 
     if [[ -n ${password_flag:-} ]]; then
         MAVEN_CMD="$MAVEN_CMD -Dquarkus.container-image.username=$REGISTRY_USERNAME -Dquarkus.container-image.password=\"$REGISTRY_PASSWORD\""
     fi
 
-    echo "MAVEN_CMD is $MAVEN_CMD"
+#    echo "MAVEN_CMD is $MAVEN_CMD"
 
     eval $MAVEN_CMD
 }
