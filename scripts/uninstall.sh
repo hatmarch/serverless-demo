@@ -69,8 +69,8 @@ remove-operator()
 
     echo "Uninstalling operator: ${OPERATOR_NAME} from project ${OPERATOR_PROJECT}"
     # NOTE: there is intentionally a space before "currentCSV" in the grep since without it f.currentCSV will also be matched which is not what we want
-    CURRENT_CSV=$(oc get sub ${OPERATOR_NAME} -n ${OPERATOR_PROJECT} -o yaml | grep " currentCSV:" | sed "s/.*currentCSV: //")
-    oc delete sub ${OPERATOR_NAME} -n ${OPERATOR_PROJECT}
+    CURRENT_CSV=$(oc get subscriptions.operators.coreos.com ${OPERATOR_NAME} -n ${OPERATOR_PROJECT} -o yaml | grep " currentCSV:" | sed "s/.*currentCSV: //")
+    oc delete subscriptions.operators.coreos.com ${OPERATOR_NAME} -n ${OPERATOR_PROJECT}
     oc delete csv ${CURRENT_CSV} -n ${OPERATOR_PROJECT}
 }
 
@@ -114,11 +114,11 @@ main() {
     # delete projects created for codeready workspaces projects
     oc get project -o name | grep -- -codeready | xargs oc delete || true
 
-    remove-operator "codeready-workspaces" || true
+    remove-operator "codeready-workspaces" codeready || true
 
     remove-crds "checlusters.org.eclipse.che" || true
 
-    remove-operator "kubernetes-imagepuller-operator" || true
+    remove-operator "kubernetes-imagepuller-operator" codeready || true
 
     remove-crds "kubernetesimagepuller" || true
 
@@ -132,6 +132,8 @@ main() {
         oc delete namespace knative-eventing || true
 
         echo "Uninstalling knative serving"
+        # route is the owner of any ingresses.networking.internal.knative.dev
+        oc delete route --all -n knative-serving || true
         oc delete ingresses.networking.internal.knative.dev --all -n knative-serving || true
         oc delete knativeservings.operator.knative.dev knative-serving -n knative-serving || true
  
