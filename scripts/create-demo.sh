@@ -31,7 +31,7 @@ get_and_validate_options() {
 
   
   # parse options
-  while getopts ':ip:h' option; do
+  while getopts ':isp:h' option; do
       case "${option}" in
           i  ) prereq_flag=true;;
           s  ) skipserverless_flag=true;;

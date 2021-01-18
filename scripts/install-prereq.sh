@@ -15,6 +15,8 @@ while (( $# )); do
             ;;
         --skip-serverless)
             INSTALL_SERVERLESS=""
+            # if you don't have serverless, you don't have eventing which means you need to skip Kafka eventing
+            SKIP_KAFKA_EVENTING="true"
             shift
             ;;
         --crc)
