@@ -73,12 +73,86 @@ docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run
 
 . Have VSCode opened (remote) at the root of the `serverless-demo` directory.
 
-== Installing Knative Serverless
+== Intro to Coolstore
+
+. Open the Topology View
+.. Notice all the different support services
+.. Be sure to point out the *Kafka Cluster*
+. Set to `Focus`
+.. Now just on the services running
+.. Point out that the payment service is running just like the rest
+. Set up watches on the different kafka topics
+.. In the `Kakfa Order Shell` run the following command:
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n $dev_prj -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic orders
+----
++
+. In the `Kafka Payment Shell` run the following command:
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n $dev_prj -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
++
+. Click the route badge to open the website
+. Buy something 
+. You should see the order and the payment come through the shells
+. In the website, click on Orders.  You should see the following:
++
+image:initial-order-purchase.png[]
+
+
+== Installing OpenShift Serverless
+
+. In a new tab, go to Operator Hub
+. Search for `Serverless`
++
+image:operator-hub-serverless.png[]
++
+.. Show the information about the operator
+. Install the operator with all the defaults
++
+image:operator-defaults.png[]
++
+. Wait until operator is installed and then click on the "View Operator" button or link
++
+image:operator-wait.png[]
++
+. Switch to `knative-serving` project (which was automatically created by the operator)
++
+image:operator-switch.png[]
++
+. Create the `KnativeServing` instance for the cluster by clicking on the highlighted link
++
+image:start-knative-serving.png[]
++
+. Once on the page listing all the `Knative Servings` for the knative-serving project, click the "Create Knative Serving" link
+.. Show different options in `Form View` and explain how this govens the defaults for how serverless deployments will behave
+. Switch to `YAML View` and paste contents from link:../install/serverless/cr.yaml[the cr.yaml file in the project]
+*** You can use kbd:[CMD + P] to quickly open `cr.yaml` in VS Code and copy all the contents
++
+image:knative-cr-interesting.png[]
++
+. Click `Create` button at bottom of page
+. Point out that the `Serverless` drawer now appears in the UI
+.. There's not much to see yet, but you might click into  it
+.. Talk about OpenShift is tightly integrated with OpenShift Serving and new options are available all over the cluster, as will be seen in the next section
+. Before moving onto the next section, make sure knative-serving is ready by typing in the `shell`
++
+----
+oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeout=6m -n knative-serving
+----
++
+.. When knative-serving is fully installed, the command will return with:
++
+----
+knativeserving.operator.knative.dev/knative-serving condition met
+----
 
 == Creating Knative Service
 
 . Set the payment-traditional service down to 0
-.. If you want to do this from the commandline instead:
+.. If you want to do this from the `shell` instead:
 +
 ----
 oc scale --replicas=0 deployment/payment-traditional -n $dev_prj
