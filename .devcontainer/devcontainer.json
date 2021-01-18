@@ -31,7 +31,8 @@
 		"redhat.vscode-quarkus",
 		"ggrebert.quarkus-snippets",
 		"humao.rest-client",
-		"redhat.vscode-knative"
+		"redhat.vscode-knative",
+		"eamodio.gitlens"
 	],
 	"settings":{
 		"java.home": "/usr/lib/jvm/java-11",
