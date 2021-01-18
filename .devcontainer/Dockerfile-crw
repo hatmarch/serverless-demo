@@ -1,5 +1,6 @@
 # FROM quay.io/mhildenb/crw-maven:1.3.3-b
 FROM registry.redhat.io/codeready-workspaces/stacks-dotnet-rhel8@sha256:a61038e596c0c6104ae86cf4c5af5c60a6126feefa6e6585c540de2c48b723a2 AS crw-reference
+FROM quay.io/mhildenb/demo-cache:latest as cachier
 
 FROM quay.io/mhildenb/kn-demo-shell:latest
 
@@ -12,7 +13,12 @@ USER jboss
 
 COPY --from=crw-reference /home/jboss /home/jboss
 
+COPY --from=cachier /home/jboss/.m2 /home/jboss/m2-cache
+
 CMD [ "/bin/sh", "-c", "tail -f /dev/null" ]
+
+# Update the quarkus profile so that CRW uses the appropriate application.properties
+ENV QUARKUS_PROFILE=crw
 
 ENTRYPOINT [  "/home/jboss/entrypoint.sh" ]
 
