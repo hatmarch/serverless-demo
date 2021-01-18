@@ -10,6 +10,54 @@
 See link:demo-setup.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
 ====
 
+== Creating Knative Service
+
+. Set the payment-traditional service down to 0
+.. If you want to do this from the commandline instead:
++
+----
+oc scale --replicas=0 deployment/payment-traditional -n $dev_prj
+----
++
+. Next add to the `focus` application from git
++
+image:add-kn-service-git.png[]
++
+. Get the repo URL from the following command
++
+----
+REPO=echo "https://$(oc get route gitea -n $cicd_prj -o jsonpath='{.spec.host}')/gitea/coolstore"
+----
++
+. Fill in the form with the following:
+** _Git Repo URL_: $REPO
+** _Git Reference_ (advanced options): serverless-demo
+** _Builder_: Java, `openjdk-11-ubi8`
+** _Name_: payment
+** _Resources_: Knative Service
+** _Pipelines_: Do not add Pipeline
+** _Build Configuration_ (advanced options): Uncheck all
+** _Scaling_ (advanced options): 
+*** _Concurrency Target_: 1
+*** _Concurrency Limit_: 1
++
+image:import-from-git-1.png[]
+image:import-from-git-2.png[]
+image:import-from-git-3.png[]
+image:import-from-git-4.png[]
++
+. In the `hidden shell` run the following command to create and annotate the revision so that we get a badge for CRW
++
+----
+kn service update payment --image quay.io/rhdevelopers/knative-tutorial-greeter:quarkus --annotation "app.openshift.io/vcs-ref=serverless-demo" --annotation "app.openshift.io/vcs-uri=https://github.com/hatmarch/coolstore.git" --revision-name "{{.Service}}-initial"
+----
+. When the revision comes up, then click on the badge to start editing the code
+
+== Turning a normal service into a Knative Service
+
+. Edit the code in CRW removing the struck through lines
+. Run the code locally and prove that it has access to the kafka topic
+
 == Knative Functions
 
 . Clone the git repo of the openshift cluster as a submodule of the VS Code project
