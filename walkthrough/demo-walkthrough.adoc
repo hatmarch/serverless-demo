@@ -151,6 +151,10 @@ knativeserving.operator.knative.dev/knative-serving condition met
 
 == Creating Knative Service
 
+. Ensure that the `Topology View` of the `kn-demo-dev` project is visible in the `Browser Window`
++
+image:topology-view.png[]
++
 . Set the payment-traditional service down to 0
 .. If you want to do this from the `shell` instead:
 +
@@ -158,14 +162,25 @@ knativeserving.operator.knative.dev/knative-serving condition met
 oc scale --replicas=0 deployment/payment-traditional -n $dev_prj
 ----
 +
-. Next add to the `focus` application from git
+. To prove that nothing is addressing orders as they come in, run the following command in the `shell` to simulate the placement of an order:
++
+----
+cat $DEMO_HOME/example/order-payload.json | oc exec -i -c kafka my-cluster-kafka-0 -n $dev_prj -- /opt/kafka/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic orders
+----
++
+.. You should see an order in the `Kafka Order Shell` but no corresponding payment processing in the `Kafka Payments Shell`
+.. You can also navigate to the orders page of the Coolstore website and see the order not processed
++
+image:unprocessed-order.png[]
++
+. Next right-click on the `focus` grouping to add a new application from git
 +
 image:add-kn-service-git.png[]
 +
 . Get the repo URL from the following command
 +
 ----
-REPO=echo "https://$(oc get route gitea -n $cicd_prj -o jsonpath='{.spec.host}')/gitea/coolstore"
+echo "https://$(oc get route gitea -n $cicd_prj -o jsonpath='{.spec.host}')/gitea/coolstore"
 ----
 +
 . Fill in the form with the following:
@@ -188,14 +203,128 @@ image:import-from-git-4.png[]
 . In the `hidden shell` run the following command to create and annotate the revision so that we get a badge for CRW
 +
 ----
-kn service update payment --image quay.io/rhdevelopers/knative-tutorial-greeter:quarkus --annotation "app.openshift.io/vcs-ref=serverless-demo" --annotation "app.openshift.io/vcs-uri=https://github.com/hatmarch/coolstore.git" --revision-name "{{.Service}}-initial"
+kn service update payment -n $dev_prj --image quay.io/rhdevelopers/knative-tutorial-greeter:quarkus --annotation "app.openshift.io/vcs-ref=serverless-demo" --annotation "app.openshift.io/vcs-uri=https://github.com/hatmarch/coolstore.git" --revision-name "{{.Service}}-initial"
 ----
-. When the revision comes up, then click on the badge to start editing the code
+. When the revision comes up you will see the badge for editing the code in CRW
++
+image:initial-revision-badge.png[]
 
-== Turning a normal service into a Knative Service
+== Turn payment service "Serverless" in CodeReady Workspaces
 
-. Edit the code in CRW removing the struck through lines
-. Run the code locally and prove that it has access to the kafka topic
+. Click on the CRW badge that is on the new payment knative service Revision
+.. This will launch CRW.  It will take a little while to load the workspace from the Devfile
+. While waiting, you could show the `Devfile` in VSCode (use kbd:[CMD + p] to quickly open `devfile`)
+. Once in CRW, quickly open the `PaymentResource` by using kbd:[CMD+p]
+.. Show where the PaymentResouce is in the project
+.. Mention that it's written in Quarkus
+.. Explain
+*** Emitter (and kbd:[CMD + p] `application.properties`) to show integration with Kafka
+*** `onMessage`: This is called from watching for incoming orders
+*** `handleCloudEvent`: This is called when orders are found
+*** `pass`, `fail`, `createPayment`: These functions create a payload for the emitter
+. Edit the PaymentResource such that it looks like the diff on the right
+** *NOTE:* You can also copy and paste from link:../example/payment-knative/PaymentResource.java[example/payment-knative/PaymentResource.java]
++
+image:knative-diffs.png[]
++
+. Open the side bar to and select `Seed Cache` to ensure a quicker local compile
+. Then select `New Terminal` to open a terminal
++
+image:crw-sidebar-terminal.png[]
++
+. In the terminal, run this command to run in live mode
++
+----
+cd coolstore/payment-service
+mvn quarkus:dev
+----
++
+. When the code starts running, CRW will prompt you that different routes and ports are open
+.. When the main route comes up, copy this route
+** [red]#NOTE:# You may have to refresh the page a couple times before it comes up
++
+image:preview-route.png[]
++
+. In the `shell`, set the CRW_ROUTE variable with the route that was published by CRW
++
+----
+CRW_ROUTE=<COPIED ROUTE>
+----
++
+. Access the route by posting to it with this command
++
+----
+curl -i -H 'Content-Type: application/json' -X POST -d @$DEMO_HOME/example/order-payload.json $CRW_ROUTE
+----
++
+. You should now see something posted to the `Kafka Payments Shell` with a tell-tale change of:
++
+----
+... "status":"COMPLETED (Serverless Service)"
+----
++
+. Go to the `Git` window, enter a commit message and stage the `PaymentResource` with the `+` button
++
+image:checkin-message.png[]
++
+. In the CRW terminal (potentially after interrupting `mvn quarkus:dev` with kbd:[ctrl + c]) run the following commands:
++
+----
+git commit -m"Setup payment service for serverless and EDA"
+git push origin
+----
++
+. You will be prompted for a username and password
+** *username*: gitea
+** *password*: gitea
+
+== Pipelines Build
+
+. _Immediately_ switch to the Pipelines Tab and show that a `PipelineRun` has been triggered
++
+image:pipeline-run.png[]
++
+. Click on the `PipelineRun` link (highlighted above) and show the PipelineRun details
++
+image:pipeline-run-details.png[]
++
+. Explain the different build stages
+. Click on the logs to follow
+.. BETTER: in the `shell` run the following command to follow the build (and maximize shell):
++
+----
+tkn pr logs -L -f -n $cicd_prj
+----
++
+. When the pipeline finishes, it will output the URL of the knative service which we'll use in the next section
++
+image:tkn-kn-url.png[]
++
+. Copy the highlighted URL and set the following variable in the `shell`:
++
+----
+KN_ROUTE=<URL copied from above>
+----
+
+== OPTIONAL: Single Knative Function Invoke
+
+. Open the `Topology View` of the browser tab and ensure the knative service can be seen even when the `shell` is open
+. Point out the the knative service is set to 0 instances
++
+image:pre-invoke-shell.png[]
++
+. Put a couple newlines in the `Kafka Payments Shell`
+. In the `shell` run the following command to invoke the service:
++
+----
+curl -i -H 'Content-Type: application/json' -X POST -d @$DEMO_HOME/example/order-payload.json $KN_ROUTE
+----
++
+. You should see the pod start up
+. Once running, you should see a new entry in the `Kafka Payments Shell`
+. Continue to watch the service until the pod stops and the number of instances goes back to 0
+
+== Install Knative Eventing
 
 == Knative Functions
 
