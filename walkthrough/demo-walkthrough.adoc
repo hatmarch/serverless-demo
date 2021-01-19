@@ -468,25 +468,25 @@ image:split-messages.png[right,400]
 
 == Knative Functions
 
-. Clone the git repo of the openshift cluster as a submodule of the VS Code project
+. Switch to VSCode Desktop
+. In the terminal, navigate to the following (empty) directory
 +
 ----
-git submodule add -b serverless-demo https://$(oc get route gitea -o jsonpath='{.spec.host}' -n $PROJECT_PREFIX-cicd)/gitea/coolstore func
+cd $DEMO_HOME/coolstore/payment-func
 ----
 +
-. Create a directory into which to create the function
-+
-----
-mkdir -p func/payment-func
-cd func/payment-func
-----
-+
-. Initialize the function
+. Initialize a new function by running the following command in the terminal
 +
 ----
 kn func create -l quarkus -t events
 ----
 +
+. Then override the default func.yaml with values we prepared earlier (about the destination image name, etc)
++
+----
+mv $DEMO_HOME/example/payment-func/func.yaml .
+----
+
 TODO: Fill in editing and local running steps
 +
 . Deploy the function using the following command
