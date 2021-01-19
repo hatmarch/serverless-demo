@@ -1,7 +1,9 @@
 apiVersion: sources.knative.dev/v1beta1
 kind: KafkaSource
 metadata:
-  name: kafka-source
+  name: kafka-order-source
+  labels:
+    app.kubernetes.io/part-of: focus
 spec:
   consumerGroup: knative-group
   bootstrapServers:
