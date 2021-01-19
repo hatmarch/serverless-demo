@@ -389,7 +389,7 @@ image:suggested-layout-coolstore-event.png[]
 . The payment knative service should spin up and the order and payment topics should have messages registered
 . Switch to the Order tab in coolstore to show that this order has been processed
 
-== TODO: Scale and Revisions redux
+== Scaling and Concurrency
 
 . From the Topology view, go to the `payment` service, open the details, and select `Edit payment` menu item
 +
@@ -419,7 +419,9 @@ hey -n 50 -c 50 -m POST -D $DEMO_HOME/example/order-payload.json -T "application
 . Show the `hey` histogram to get a sense of timings
 +
 image:scaling-and-histogram.png[]
-+
+
+== Revisions and Traffic Splitting
+
 . Next, in the payment details highlight the revision list for `payment`
 +
 image:revision-list.png[]
