@@ -87,6 +87,9 @@ if [[ -n ${EXTERNAL_KAFKA_ENDPOINT} ]]; then
     # override configuration variables for use with config functionality in quarkus payment service
     export mp_messaging_outgoing_payments_bootstrap_servers=${EXTERNAL_KAFKA_ENDPOINT}
     export mp_messaging_incoming_orders_bootstrap_servers=${EXTERNAL_KAFKA_ENDPOINT}
+
+    export DEV_mp_messaging_outgoing_payments_bootstrap_servers=${EXTERNAL_KAFKA_ENDPOINT}
+    export DEV_mp_messaging_incoming_orders_bootstrap_servers=${EXTERNAL_KAFKA_ENDPOINT}
 else
     echo "WARNING: No external kafka cluster could be found at $(oc whoami --show-server 2>/dev/null)"
 fi
