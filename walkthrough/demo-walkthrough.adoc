@@ -262,8 +262,10 @@ curl -i -H 'Content-Type: application/json' -X POST -d @$DEMO_HOME/example/order
 ----
 ... "status":"COMPLETED (Serverless Service)"
 ----
-+
-. Go to the `Git` window, enter a commit message and stage the `PaymentResource` with the `+` button
+
+== Commit and Trigger Pipelines Build
+
+. From within CRW, go to the `Git` window, enter a commit message and stage the `PaymentResource` with the `+` button
 +
 image:checkin-message.png[]
 +
@@ -275,12 +277,9 @@ git push origin
 ----
 +
 . You will be prompted for a username and password
-** *username*: gitea
-** *password*: gitea
-
-== Pipelines Build
-
-. _Immediately_ switch to the Pipelines Tab and show that a `PipelineRun` has been triggered
+** *username*: `gitea`
+** *password*: `gitea`
+. _Immediately_ switch to the Pipelines Browser window and show that a `PipelineRun` has been triggered
 +
 image:pipeline-run.png[]
 +
