@@ -88,7 +88,7 @@ docker run --rm -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/va
 oc exec -c kafka my-cluster-kafka-0 -n $dev_prj -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic orders
 ----
 +
-. In the `Kafka Payment Shell` run the following command:
+.. In the `Kafka Payment Shell` run the following command:
 +
 ----
 oc exec -c kafka my-cluster-kafka-0 -n $dev_prj -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
