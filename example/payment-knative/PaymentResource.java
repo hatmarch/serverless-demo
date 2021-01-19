@@ -36,7 +36,7 @@ public class PaymentResource {
             String name = event.getString("name");
 
             // fake processing time
-            // Thread.sleep(5000);
+            Thread.sleep(1000);
 
             if (!ccDetails.getString("number").startsWith("4")) {
                 fail(orderId, paymentId, "Invalid Credit Card: " + ccDetails.getString("number"));

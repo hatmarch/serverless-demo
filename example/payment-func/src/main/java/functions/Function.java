@@ -35,7 +35,7 @@ public class Function {
 
         try {
             // fake processing time
-            // Thread.sleep(5000);
+            Thread.sleep(1000);
 
             if (!input.creditCard.number.startsWith("4")) {
                 fail(input.orderId, paymentId, "Invalid Credit Card: " + input.creditCard.number );

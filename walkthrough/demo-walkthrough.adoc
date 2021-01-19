@@ -412,7 +412,7 @@ image:pod-count-options.png[]
 ** NOTE: `KN_URL` should already have been set from previous sections but if you don't have it you can get it with `KN_URL=$(oc get rt payment -o jsonpath='{.status.url}')`
 +
 ----
-hey -n 50 -c 50 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
+hey -n 50 -c 50 -t 60 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
 ----
 +
 . The count on the payment ksvc should increase to near 50
@@ -429,7 +429,7 @@ image:revision-list.png[]
 . _Whilst keeping the revision list visible_: Add a native revision with `kn command` from the `shell`
 +
 ----
-kn service update payment -n $dev_prj --image quay.io/mhildenb/homemade-serverless-native:initial-service-1.0 --revision-name "{{.Service}}-native"
+kn service update payment -n $dev_prj --image quay.io/mhildenb/homemade-serverless-native:initial-service-1.1 --revision-name "{{.Service}}-native"
 ----
 +
 . Notice that payment-native is now set to get 100% of the traffic
@@ -440,7 +440,7 @@ image:new-native-revision.png[]
 . Show that traffic is going 100% to the new native service by running the same `hey` command in the `shell`
 +
 ----
-hey -n 50 -c 50 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
+hey -n 50 -c 50 -t 60 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
 ----
 +
 . Be sure to show the new "native" messages coming through in the `Kafka Payments Shell`
@@ -458,14 +458,13 @@ image:traffic-split.png[]
 . _Whilst keeping pod-count payment service in focus (with details), and the `Kafka Payment Shell` visible_: from the `shell` run the same `hey` command to send 50 concurrent requests to the payment service
 +
 ----
-hey -n 50 -c 50 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
+hey -n 50 -c 50 -t 60 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
 ----
 +
 . Show the hey histogram and `Kafka Payment Shell` messages as evidence of the split
 +
 image:split-histogram.png[left,300]
 image:split-messages.png[right,400]
-
 
 == Knative Functions
 
