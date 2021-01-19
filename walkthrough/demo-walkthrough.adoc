@@ -32,7 +32,7 @@ This should be offscreen
 .. Run the same docker command from before
 +
 ----
-docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+docker run --rm -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
 ----
 +
 .. Ensure you are logged in as a `cluster-admin`
@@ -44,7 +44,7 @@ docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run
 .. Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
 +
 ----
-docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+docker run --rm -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
 ----
 +
 .. Ensure you are logged in as a `cluster-admin`
@@ -59,7 +59,7 @@ docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run
 .. Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
 +
 ----
-docker run -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
+docker run --rm -it -v ~/.kube:/home/jboss/.kube -v /var/run/docker.sock.raw:/var/run/docker.sock -v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh -v $(pwd):/workspaces/serverless-demo -w /workspaces/serverless-demo quay.io/mhildenb/kn-demo-shell /bin/zsh
 ----
 +
 .. Ensure you are logged in as a `cluster-admin`
