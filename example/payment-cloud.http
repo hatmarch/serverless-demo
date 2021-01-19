@@ -13,6 +13,7 @@
 
 POST http://localhost:8080
 #POST http://payment--func-kn-demo-dev.apps.cluster-e94a.e94a.example.opentlc.com/
+#POST https://route5dja84oy-opentlc-mgr-codeready.apps.cluster-e94a.e94a.example.opentlc.com
 Content-type: application/json
 Ce-id: 1
 Ce-source: cloud-event-orders
