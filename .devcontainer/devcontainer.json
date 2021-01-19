@@ -6,7 +6,8 @@
 		// see: https://github.com/docker/for-mac/issues/4755
 		"-v", "/var/run/docker.sock.raw:/var/run/docker.sock",
 		// share docker registry credentials
-		"-v", "${env:HOME}/.docker:/home/jboss/.docker",
+		// FIXME: This does not appear to work with all DockerDesktop for Mac configurations
+		//"-v", "${env:HOME}/.docker:/home/jboss/.docker",
 
 		"-v", "${env:HOME}/.aws:/home/jboss/.aws",
 		"-v", "${env:HOME}/.kube:/home/jboss/.kube",
