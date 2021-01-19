@@ -211,6 +211,17 @@ image:initial-revision-badge.png[]
 
 == Turn payment service "Serverless" in CodeReady Workspaces
 
+[IMPORTANT]
+.Seeding the CRW
+====
+The workspace needs to download a lot of maven packages to get the language server to run.  You can cut down on this time if you run the "Seed Cache" command earlier in the process than the instructions indicate.
+
+If you find yourself waiting around for the the "Activating Quarkus" prompt to go away, then this might speed things up
+
+image:activating-quarkus.png[]
+
+====
+
 . Click on the CRW badge that is on the new payment knative service Revision
 .. This will launch CRW.  It will take a little while to load the workspace from the Devfile
 . While waiting, you could show the `Devfile` in VSCode (use kbd:[CMD + p] to quickly open `devfile`)
