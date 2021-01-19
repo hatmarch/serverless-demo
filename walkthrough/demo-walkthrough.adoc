@@ -468,10 +468,27 @@ image:split-messages.png[right,400]
 
 == Knative Functions
 
+[IMPORTANT]
+.Latest Kafka Certificates Needed To Run Locally
+====
+To make sure you have the latest kafka certs for running the Function locally, make sure you run this in all terminals that you will be running the service FIRST
+
+----
+oc get pods -n openshift-operators -o name | grep amq-streams | xargs oc delete -n openshift-operators
+
+# Wait until Kafka is reinitialized
+
+# Reinstate your local properties
+. $DEMO_HOME/scripts/shell-setup.sh
+----
+====
+
 . Switch to VSCode Desktop
++
 . In the terminal, navigate to the following (empty) directory
 +
 ----
+mkdir $DEMO_HOME/coolstore/payment-func
 cd $DEMO_HOME/coolstore/payment-func
 ----
 +
@@ -484,54 +501,99 @@ kn func create -l quarkus -t events
 . Then override the default func.yaml with values we prepared earlier (about the destination image name, etc)
 +
 ----
-mv $DEMO_HOME/example/payment-func/func.yaml .
-----
-
-TODO: Fill in editing and local running steps
-+
-. Deploy the function using the following command
-+
-----
-kn func deploy -v -n $PROJECT_PREFIX-dev
+cp -f $DEMO_HOME/example/payment-func/func.yaml .
 ----
 +
+. Now remove all the highlighted files
++
+image:kn-func-files-to-delete.png[]
++
+. Next, open the `Function.java` file and show the stuff that was added by default
+** Highly @Funq context
+. Change `Input` to be of type `Order` and remove Input.java
+** Explain that built into the function machinery is to map the body of a cloud event to POJOs
+. Use kbd:[CMD + p] to open `payment-cloud.http` quickly
+** Show the structure of the body
+. Create the following POJOs or copy them into the payment-func directory (and show them) by running
++
+----
+cp $DEMO_HOME/example/payment-func/src/main/java/functions/Order.java $DEMO_HOME/coolstore/payment-func/src/main/java/functions
+cp $DEMO_HOME/example/payment-func/src/main/java/functions/CreditCard.java $DEMO_HOME/coolstore/payment-func/src/main/java/functions
+----
++
+. We are needing to connect to kafka, so let's add that library to our project
++
+----
+mvn quarkus:add-extension -Dextensions=reactive-messaging-kafka
+----
++
+. Next edit the function file so that it looks like this (perhaps using link:example/payment-knative/PaymentResource.java[example/payment-knative/PaymentResource.java] as a reference on the side):
+** Alternatively, run this command:
++
+----
+cp -f $DEMO_HOME/example/payment-func/src/main/java/functions/Function.java $DEMO_HOME/coolstore/payment-func/src/main/java/functions/Function.java
+----
++
+image:func-diff-1.png[]
+image:func-diff-2.png[]
++
+. Open the `application.properties` and notice there is only one there by default
+. Add the properties necessary for connecting to kafka by overwriting it with this command
++
+----
+cp -f $DEMO_HOME/example/payment-func/src/main/resources/application.properties $DEMO_HOME/coolstore/payment-func/src/main/resources/application.properties
+----
++
+. Run the service locally to prove that it's working
+. Open a new split terminal to use as the `Kafka Payment Shell` and run the following command in it
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n $dev_prj -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
++
+. OPTIONAL: To ensure you have the latest certs for accessing the Kafka Cluster, run this command in the terminal 
+. In the orginal shell, run the following to start the service running locally 
++
+----
+mvn quarkus:dev -Dsuspend
+---- 
++
+. Attach the debugger and set a breakpoint in the Function 
+. Use kbd:[CMD + p] to open `payment-cloud.http` quickly and click on "Send" code lens
++
+image:vscode-order-send.png[]
++
+. The function should execute and the output should be seen in the `Kafka Payment Shell`
+. Deploy the function using the following command:
++
+----
+kn func deploy -v -n $dev_prj
+----
++
+. When the deployment completes, switch to `Desktop 1` to show the Topology View
+. Select `Application: All Applications`
+. Find the function revision and kbd:[shift]-drag the revision into the focus group
+. Select `Application: Focus`
+. Next re-wire the kafka source
 . Create the kafka event source using this command:
-** [red]#NOTE: The UI for kafka event sources appears to be broken#
+** [red]#NOTE: The UI for kafka event sources appears to be broken so you can't YET move the connector to the Service#
 +
+image:move-connector.png[left, 300]
+image:move-error.png[right, 300]
++
+. Instead, we'll delete it and create a new one manually in the `shell`
+** NOTE: It's important you delete the old kafka source or you'll get multiple updates in the channel
 ----
-oc apply -f $DEMO_HOME/install/knative-eventing/orders-event-source.yaml
-----
-+
-. Ensure that old payment service is not longer running or attached to knative event
-+
-. Make sure you have a shell that is showing the payment messages:
-+
-----
-oc exec -c kafka my-cluster-kafka-0 -n kn-demo-dev -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+oc delete -n $dev_prj -f $DEMO_HOME/install/knative-eventing/orders-event-source-func.yaml
+oc apply -n $dev_prj -f $DEMO_HOME/install/knative-eventing/orders-event-source-func.yaml
 ----
 +
-. Purchase an item from the website as you would do normally.
+. _Whilst making sure the `Kafka Payment Shell` and Topology View with Knative Func is visible_: Make a purchase from the coolstore.
+. Notice the new message
++
+image:function-final.png[]
 
-=== Run Funcion Locally
-
-[red]#These instructions need to be updated for the kafka producer side of things: it's not simple as a port-forward
-
-. To run locally, it's important to add a profile that overrides the kafka bootstrapper property location.  In `application.properties` add the following
-+
-----
-%dev.mp.messaging.outgoing.payments.bootstrap.servers=localhost:9092
-----
-+
-. Then forward to the kafka bootstrapper
-----
-oc port-forward svc/my-cluster-kafka-bootstrap 9092:9092 -n ${PROJECT_PREFIX}-dev
-----
-+
-. Show messages as they appear in the payment queue
-+ 
-----
-oc exec -c kafka my-cluster-kafka-0 -n ${PROJECT_PREFIX}-dev -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
-----
+= OLD WALKTHROUGH (2020)
 
 == Payment Service on CRC 
 
