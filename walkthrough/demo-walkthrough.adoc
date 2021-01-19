@@ -303,7 +303,7 @@ image:tkn-kn-url.png[]
 . Copy the highlighted URL and set the following variable in the `shell`:
 +
 ----
-KN_ROUTE=<URL copied from above>
+KN_URL=<URL copied from above>
 ----
 
 == OPTIONAL: Single Knative Function Invoke
@@ -317,7 +317,7 @@ image:pre-invoke-shell.png[]
 . In the `shell` run the following command to invoke the service:
 +
 ----
-curl -i -H 'Content-Type: application/json' -X POST -d @$DEMO_HOME/example/order-payload.json $KN_ROUTE
+curl -i -H 'Content-Type: application/json' -X POST -d @$DEMO_HOME/example/order-payload.json $KN_URL
 ----
 +
 . You should see the pod start up
@@ -391,10 +391,79 @@ image:suggested-layout-coolstore-event.png[]
 
 == TODO: Scale and Revisions redux
 
-. Add a native revision with `kn command`
-. Show that traffic is split between the two adding some events to the orders kafka queue so that Native version picks up some
-. Next blast with kafka spammer?
-. Or just use hey and show distro
+. From the Topology view, go to the `payment` service, open the details, and select `Edit payment` menu item
++
+image:edit-payment-ksvc.png[]
++
+. To remind the audience of the scaling limits, scroll down to the bottom of the ksvc details until you get to the `Advanced` section.  There click on the `Scaling` link
++
+image:ksvc-scaling.png[]
++
+. Show the scaling details and highlight concurrency limits
++
+image:import-from-git-4.png[]
++
+. Hit `Cancel` to go back to the Topology View with the payment service in focus
+. Under `Display Options` select `Pod Count` to that count can be stressed
++
+image:pod-count-options.png[]
++
+. _Whilst keeping pod-count payment service in focus (with details), and the `Kafka Payment Shell` visible_: from the `shell` run the following command to send 50 concurrent requests to the payment service
+** NOTE: `KN_URL` should already have been set from previous sections but if you don't have it you can get it with `KN_URL=$(oc get rt payment -o jsonpath='{.status.url}')`
++
+----
+hey -n 50 -c 50 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
+----
++
+. The count on the payment ksvc should increase to near 50
+. Show the `hey` histogram to get a sense of timings
++
+image:scaling-and-histogram.png[]
++
+. Next, in the payment details highlight the revision list for `payment`
++
+image:revision-list.png[]
++
+. _Whilst keeping the revision list visible_: Add a native revision with `kn command` from the `shell`
++
+----
+kn service update payment -n $dev_prj --image quay.io/mhildenb/homemade-serverless-native:initial-service-1.0 --revision-name "{{.Service}}-native"
+----
++
+. Notice that payment-native is now set to get 100% of the traffic
+** NOTE: You may need to recent payment in the `Topology View` window
++
+image:new-native-revision.png[]
++
+. Show that traffic is going 100% to the new native service by running the same `hey` command in the `shell`
++
+----
+hey -n 50 -c 50 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
+----
++
+. Be sure to show the new "native" messages coming through in the `Kafka Payments Shell`
+. Also show the histogram.  Should be responding a little bit faster
+. Finally, let's split traffic between the two revisions, click on `Set Traffic Distribution`
+. Adjust the Distribution between the previous (non-native) revision as shown:
+** NOTE: Click 'Add Revision` link to add a new line
++
+image:edit-revisions.png[]
++
+. Click Save and go back to the `Topology View` refocusing as necessary
++
+image:traffic-split.png[]
++
+. _Whilst keeping pod-count payment service in focus (with details), and the `Kafka Payment Shell` visible_: from the `shell` run the same `hey` command to send 50 concurrent requests to the payment service
++
+----
+hey -n 50 -c 50 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $KN_URL
+----
++
+. Show the hey histogram and `Kafka Payment Shell` messages as evidence of the split
++
+image:split-histogram.png[left,300]
+image:split-messages.png[right,400]
+
 
 == Knative Functions
 
