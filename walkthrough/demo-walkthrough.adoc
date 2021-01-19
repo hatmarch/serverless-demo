@@ -256,16 +256,16 @@ mvn quarkus:dev
 +
 image:preview-route.png[]
 +
-. In the `shell`, set the CRW_ROUTE variable with the route that was published by CRW
+. In the `shell`, set the CRW_URL variable with the route that was published by CRW
 +
 ----
-CRW_ROUTE=<COPIED ROUTE>
+CRW_URL=<COPIED ROUTE>
 ----
 +
 . Access the route by posting to it with this command
 +
 ----
-curl -i -H 'Content-Type: application/json' -X POST -d @$DEMO_HOME/example/order-payload.json $CRW_ROUTE
+curl -i -H 'Content-Type: application/json' -X POST -d @$DEMO_HOME/example/order-payload.json $CRW_URL
 ----
 +
 . You should now see something posted to the `Kafka Payments Shell` with a tell-tale change of:
