@@ -1,0 +1,557 @@
+
+= Serverless Demo (2020)
+:experimental:
+:imagesdir: images
+:toc:
+:toclevels: 4
+
+[IMPORTANT]
+====
+This is the walkthrough as it was for 2020 and versions of OpenShift < 4.6 and OpenShift Serverless < 1.11.
+
+Most current walkthrough can be found link:demo-walkthrough.adoc[here]
+====
+
+== Payment Service on CRC 
+
+In this section well show a payment service that is running to poll the kafka 
+
+=== Setup Code Ready Containers 
+
+. Download Code ready containers
+. Unzip and move the binary to a location in your path
+. Save the pull secret to a location in your home directory
+. Configure the crc as follows:
++
+----
+crc config set cpus 8
+crc config set memory 10486
+crc config set pull-secret-file <PATH_TO_PULL_SECRET>
+----
++
+. Run `crc setup`
+. Run `crc start` and once started record the login information presented
+
+=== Optional: Show UI Installation of necessary operators
+
+For this section you will need two windows: a command line shell and the web browser (for the console)
+
+. From the console, run `crc console` which should show the OpenShift console in the running CRC instance
+** NOTE:  Make sure you have the kube admin login password handy
+. Go to _Operators > Operator Hub_
+. Search for Knative and select the OpenShift Serverless Operator
+. Select install (for all projects)
+. OPTIONAL: Search for Kafka and select the AMQ Streams operator
+. Create a new namespace called `knative-serving` and select this as the current project
+. Navigate to the _Operators > Installed Operators_ tab and wait until OpenShift Serverless is successfully copied
+. Click on the _Knative Serving_ link and then press the _Create Knative Serving_ button
++
+image:knative-serving-cr-console.png[]
++
+. A default CR YAML UI will appear. Point out some of the more interesting elements of the CR (as well as the help on the right side of the screen)
++
+image:knative-cr-interesting.png[]
++
+. Click the _CREATE_ button
+. Wait for a bit and after a while, a new tab should appear in the left OpenShift drawer navigation, namely the _Serverless_ tab
+. Click on the tab and show what's underneath
++
+image:serverless-drawer.png[]
+
+=== Build and install payment service on CRC
+
+==== Build Payment
+
+. Make sure the CRC is running and you have the appropriate login string
+. Run the following commands in a shell
++
+----
+source scripts/shell-setup.sh
+code .
+----
++
+. From a shell in VSCode, run the following to install the necessary prerequisites (NOTE the flags to the `install-prereq.sh` command.  These ensure that CRC can handle the installation)
+** `homemade-serverless` is the name of the project where we'll be running this.  You can change this name if you'd like 
++
+----
+source scripts/shell-setup.sh
+$DEMO_HOME/scripts/install-prereq.sh homemade-serverless --crc --skip-all-eventing
+----
++
+. Next use kbd:[CMD+p] to open `cr.yaml` file 
+** Point out the timeout seconds as this will be important later
+. Then apply this in the cluster
++
+----
+oc apply -f $DEMO_HOME/install/serverless/cr.yaml
+----
++
+. When that completes, then show the payment project in the explorer window and explain that this is a simple Quarkus project 
+** Show the `pom.xml` file to show the libraries that go into compilation
+** Explain how this is connecting to kafka outgoing for integration with payment topic
++
+. Next, let's remove the aspects of the payment resource that causes it to poll the order service.  In vscode, use  to navigate to the *PaymentResource.java* file 
++
+. Append a message to the COMPLETED message so that we can tell this service from others
++
+image:payment-resource-string-change.png[]
++
+. And delete the configuration for the incoming stream. In *application.properties* , delete (or comment out) the following lines for the Incoming stream:
++
+image:payment-app-properties.png[]
++
+** Explain how this is connecting to kafka outgoing for integration with payment topic
++
+. Now rebuild the service locally
++
+----
+cd $DEMO_HOME/payment-service
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -DskipTests
+----
++
+. Now create a build configuration for OpenShift by running the following, but first:
+** Explain that this just allows us to build and create an image that we store in the cluster using OpenShift specific functionality
+** Explain that we could have just as easily built an image and pushed it up to some repository (which we'll point out later)
++
+----
+# Setup a binary based build for our quarkus instance
+oc new-build  --image-stream="openshift/redhat-openjdk18-openshift:1.5" --binary --name=payment    
+----
++
+. And remotely (to upload the binary and bake it into a new image).  [blue]#NOTE: This should take about 1.5 minutes with crc cluster#
++
+----
+oc start-build payment --from-file target/*-runner.jar --follow 
+----
++
+. When the build is done, let's tag it as our initial revision
++
+----
+oc tag payment:latest payment:initial
+----
++
+. Next, show the image stream in the cluster by shifting to the [blue]#Browser# and shift-click on the _Administrator_ perspective.
++
+. In that new tab, navigate to _Builds > ImageStreams_ and show that there is a new image in the image registry (reached from the _Administrator Perspective_ under _Builds > ImageStreams_):
++
+image:payment-latest-image.png[]
+
+==== Create Knative Serverless Service
+
+. Now that we have our image tagged, let's create a knative service using that image.  
+. First mention that we're using the knative CLI kn by issuing a `kn version` command
++
+----
+kn version
+----
+. We'll name the revision for the service name ({{.Service}} which will resolve to payment) and ({{.Generation}}, which should be 1)
++
+[TIP]
+.You can use the command line to quickly get the image stream
+====
+----
+oc get is payment -o jsonpath="{.status.dockerImageRepository}" -n homemade-serverless
+----
+====
++
+----
+kn service create payment --image image-registry.openshift-image-registry.svc:5000/homemade-serverless/payment:initial --revision-name "{{.Service}}-{{.Generation}}"
+
+# Which gives the output
+Creating service 'payment' in namespace 'homemade-serverless':
+
+  0.299s The Route is still working to reflect the latest desired specification.
+  1.008s Configuration "payment" is waiting for a Revision to become ready.
+ 68.597s ...
+ 69.390s Ingress has not yet been reconciled.
+ 70.223s Ready to serve.
+
+Service 'payment' created to latest revision 'payment-1' is available at URL:
+http://payment.homemade-serverless.apps-crc.testing
+----
+. COPY the returned url (you'll need it in an upcoming part) especially if you've renamed the project that you're deploying to
++
+** Show these aspects in the UI
++
+image:knative-payment-revisions.png[]
++
+** Show that the payment service is at 0 from the _Topology_ of the _Developer Perspective_
++
+image:knative-developer.png[]
++
+. Demonstrate that the service handling http requests invoking the service via curl
+.. Open a [blue]#new terminal window (Watch Window)# that can be used to watch the payments topic and run this command
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n homemade-serverless -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
++
+.. Make sure [blue]#Watch Window# is open and watching the payments topic
+.. Make sure the [blue]#Browser# window with the _Developer Perspective_ can still be clearly seen
++
+.. From the [blue]#Main shell# execute the following `curl` command
++
+----
+curl -i -H 'Content-Type: application/json' -X POST --data-binary @$DEMO_HOME/example/order-payload.json  http://payment.homemade-serverless.apps-crc.testing/
+----
++
+.. Show payment container spinning up
++
+image:payment-spin-up.png[]
++
+.. Show payment info being pushed to the queue
++
+.. Then show it scaling back down to 0
+
+== Demonstrate Knative Eventing (Remote Cluster)
+
+[WARNING]
+====
+The coolstore and Knative Eventing require more horsepower than CRC can currently provide.  For this part of the demo you will need a separate external cluster running.
+
+You can setup the coolstore by running the following commands after logging into the cluster
+----
+. scripts/shell-setup.sh
+$DEMO_HOME/scripts/install-coolstore.sh -p coolstore
+----
+
+Wait until all the components have been installed.
+
+_NOTE: You can cause cluster side rebuilds of all the components (instead of updating images to point to dockerhub) by using the `--rebuild` flag_
+====
+
+[red]#When you login to this cluster, be sure to record the context as remote by using this command#
+----
+oc config rename-context $(oc config current-context) remote-context
+----
+
+=== Screen and Window Setup
+
+==== Screen 1
+
+Here are how the windows should be laid out on Screen 1
+
+. [blue]#Topology View#: A browser window with the _TopologyView_ of the _Developer Perspective_ open
+. [blue]#Watch Window#: A new terminal windowthat can be used to watch the payments topic and runs this command:
++
+----
+oc exec -c kafka my-cluster-kafka-0 -n coolstore -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payments
+----
++
+. [blue]#Coolstore#: A browser window that has the coolstore open so that an order can be placed
+. Your windows should look something like this:
++
+image:recommended-layout.png[]
+
+==== Screen 2
+
+On the other screen you should have a full screen view of VSCode, which you started from the `code .` command run from the _$DEMO_HOME_ directory.
+
+=== Demonstrate the working Coolstore (without payment)
+
+. First explain that we are now running on a separate cluster and that our coolstore with all its microservices are setup.
+. Login to the OpenShift console, switch to the `coolstore` project and select the Developer Perspective and show all the different services 
++
+image:.png[]
++
+. Demonstrate the coolstore site working by kbd:[SHIFT] clicking the launcher icon on the Developer Perspective (see previous) and moving the newly opened window to the right 
+** NOTE: you can also find the URL like this:
++
+----
+oc get route coolstore-ui -n coolstore
+----
++
+** [blue]#NOTE: You may find that it takes the page a while to load the first time, and also that the inventory might not show.  If this happens, just press reload#
++
+image:add-to-cart.png[]
++
+. From the cart, checkout and then enter credit card details (any 16-digit number beginning with 4 will work)
++
+image:checkout.png[]
++
+. Now navigate to the orders page.  Notice that the order gets filed but that it *doesn't* get processed
++
+image:orders.png[]
+
+=== Setup Knative Eventing
+
+Now we want to use events the order topic to be our *source* (see also link:https://knative.dev/docs/eventing/samples/kafka/source/index.html[here] for generic example) and use the payment service as our *sink*
+
+[WARNING]
+====
+The setup script should have handled this when setting up the coolstore project, but the Knative Eventing and Knative Kafka Eventing Operators should be installed on the cluster.  A good way to check this is to run this command in the `coolstore` project
+
+----
+oc get pods | grep -i ^kafka
+----
+
+You should see the following:
+----
+kafka-ch-controller-57cf94b477-dk9ss          1/1     Running     0          73s
+kafka-controller-manager-56d58bb444-dtpkd     1/1     Running     0          81s
+kafka-webhook-77b75f7c7f-df7vb                1/1     Running     0          72s
+----
+====
+
+. Show all the installed operators
++
+image:operators-all-necessary-installed.png[]
++
+. Show the setup for the `Knative Eventing Kafka` by clicking on the highlighted link in the previous image, then clicking on the knative-eventing-kafka instance 
+** Point the "bootstrapServers" in the resulting _Overview_
++
+image:knative-eventing-kafka.png[]
++
+. Now we create a simple event binding to the kafka event *source* to the payment service *sink*.  Use kbd:[CMD + p] to quickly open the `kafka-event-source.yaml`
++
+image:kafka-event-source.png[]
++
+. Apply that source to the cluster
++
+----
+oc apply -f $DEMO_HOME/payment-service/knative/kafka-event-source.yaml 
+----
++
+. Check to see if the event source is running.  It won't be running yet since the payment *sink* does not exist yet on this cluster
++
+----
+oc get pods -l eventing.knative.dev/SourceName=kafka-source-orders
+----
++
+. You can also refresh the orders page on the coolstore site and show that the payment is still not processed
+
+=== Create a Payment Image on Coolstore Cluster
+
+We need to find a way to get the image to our coolstore cluster.  Choose one of the following options to get it there:
+
+. <<OPTION 1: Add the serverless payment service via skopeo,Copy from Destination Cluster>>
+. <<OPTION 2: Add the serverless payment service via S2I,Build (native) image on cluster from S2I>>
+
+===== OPTION 1: Add the serverless payment service via skopeo
+
+[NOTE]
+====
+You will need to use kubernetes contexts to get this to work.  Use this command to list all the current contexts
+
+----
+oc config get-contexts
+----
+
+This will return a bunch of contexts that are defined.  You will want to find the NAME that is associated with your CRC cluster and store the whole of the name in `SRC_CLUSTER_CTX`.  Then find the remote cluster and store its NAME in `REMOTE_CLUSTER_CTX`.  If you marked your contexts as you logged into the different clusters this might look like this:
+
+----
+REMOTE_CLUSTER_CTX="remote-context"
+SRC_CLUSTER_CTX="crc-context"
+----
+====
+
+. Get the user and token from the coolstore (remote) cluster.  Assuming you are logged into the cluster with a token on the command line then issue the following commands
+** [red]#NOTE: you can't use the password here.  It's a bearer token type login for the registry# 
+** [red]#NOTE: the default login for the crc cluster is kube:admin, but the extra `:` confuses skopeo.  Thus we need to make sure to take out that `:` with `sed` before setting it as the src username#
++
+----
+oc config use-context $SRC_CLUSTER_CTX
+SRC_CREDS="$(oc whoami | sed s/\://g):$(oc whoami -t)"
+SRC_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
+oc config use-context $REMOTE_CLUSTER_CTX
+REMOTE_CREDS="$(oc whoami):$(oc whoami -t)"
+REMOTE_REPO="$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')"
+----
++
+. Next issue the `skopeo` command to copy the image from the src clusters image stream to the destination.
+** NOTE: If there is difficulty, you can add a `--debug` just before the `copy` subcommand to see what's going on.  For instance, you may need to add a `src-` or `dest-` `tls-verify=false`
++
+----
+skopeo copy --src-creds ${SRC_CREDS} --src-tls-verify=false --dest-creds ${REMOTE_CREDS} docker://${SRC_REPO}/homemade-serverless/payment:initial docker://${REMOTE_REPO}/coolstore/payment:initial
+----
++
+[TIP]
+====
+If the image already exists on the cluster and you want to show again copying to the cluster, then you can do the following to remove the docker image layers:
+
+. Remove any references to the image by removing image streams that point to it:
++
+----
+oc delete is payment
+----
++
+. Then, when you're sure there is nothing referencing the image in question, run this command (assuming `REMOTE_REPO` is still set from above)
++
+----
+oc adm prune images --registry-url=https://${REMOTE_REPO} --confirm
+----
+====
++
+. Once the command completes, you should be able to navigate to the _Image Stream_ tab of the `coolstore` project in the destination cluster and see the image there
++
+image:imagestream-payment-dest.png[]
+
+==== OPTION 2: Add the serverless payment service via S2I
+
+Let's create a quarkus native service to handle payment and use the power of the cluster to compile this
+
+. Create a new Source to Image (S2I) build
++
+----
+oc new-build quay.io/quarkus/ubi-quarkus-native-s2i:19.2.0~https://github.com/hatmarch/serverless-demo.git --context-dir=payment-service --name=payment-native \
+    -e MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+oc cancel-build bc/payment-native
+oc patch bc/payment-native -p '{"spec":{"resources":{"limits":{"cpu":"4", "memory":"6Gi"}}}}'
+oc start-build bc/payment-native --follow
+----
++
+** Discuss that we're updating the build command to have more omph for building the native service
+** whilst the command is running explain the different aspects of the command such as the builder image and the git repo reference
++
+. Once the build has completed, tag the resulting image
++
+----
+oc tag payment-native:latest payment:initial-native
+----
++
+. You should now be able to see the image in the _ImageStream_ for payment in the `coolstore`
+
+=== Create Payment Knative Service (on Remote)
+
+Once you have a `payment:initial` image in the `coolstore` we need to add the service
+
+. Next create a new knative payment knative service (as we did previously on the CRC instance)
+** NOTE: the -l flag is a label that will allow the service to show up as part of the "focus" topology
+** TIP: if you want to set the concurrency limit per revision, you can use the `--concurrency-limit=2` flag
++
+----
+kn service create payment --image image-registry.openshift-image-registry.svc:5000/coolstore/payment:initial --revision-name "{{.Service}}-{{.Generation}}" -l app.kubernetes.io/part-of=focus 
+----
++
+. Demonstrate the the service is ready (and dormant) by showing the topology view
++
+image:topology-coolstore-payment.png[]
++
+. Show that the `kafka-source-orders` has also spun up.  You can do this either by viewing the _Topology View_ of the _Developer Perspective_ or by issuing the following command:
++
+----
+oc get pods -l eventing.knative.dev/SourceName=kafka-source-orders
+----
++
+. You might also show that the order we had in our queue has now been processed
+
+=== Demonstrate event driven serverless
+
+. First make sure your screens are arranged as suggested in <<Screen and Window Setup,Screen and Window Setup>>
+. Next, use the coolstore site to order something
++
+image:checkout.png[]
++
+. Upon checkout you should see the payment pod spinning up to consume the order in the [blue]#Watch Window#
++
+image:consuming-kafka-queue.png[]
++
+. You can then go to the *Orders* section of the site to show that the order was consumed.  When you return to the [blue]#Topology View# the pod should be spun down (with a clear or black outline).
++
+. Attempt to make a second order before the service spins down, notice that it's processed immediate
++
+. Finally watch the topology view until the service spins down to nothing. 
+
+=== Demonstrating Concurrency
+
+. Show the concurrency limit on the service by selecting the _KSVC_ in the Topology view and selecting the revision
+** ALTERNATIVELY: if you have not set this on a per revision basis, you can show the global setting the knative instance
++
+image:knative-revision-concurrency.png[]
++
+. Open a new tab with the _Topology View_ of the _Developer Perspective_
+. Run the following `hey` command to show the payment service running under load
+** NOTE: information on the `hey` command can be found link:https://github.com/rakyll/hey[here]
++
+----
+hey -n 100 -c 100 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $(oc get rt payment -o jsonpath='{.status.url}')
+----
++
+. Navigate to the Topology view while the command is running:
+** Notice number of containers that are spun up, this should be <NUM_REQUESTS>/<MAX_CONCURRENCY>
+. When the `hey` command report comes back:
+** Notice the timings
++
+image:hey-example-timings.png[Example timings]
+
+
+=== Demonstrating Knative Revisions (featuring native Quarkus)
+
+[WARNING]
+====
+If you are running linux in a container, you need to make sure the docker daemon has enough memory assigned to it, otherwise the native quarkus build will fail towards the end of the run.  This configuration seemed to be enough to build the payment-service:
+
+image:docker-requirement.png[]
+====
+
+. Use kbd:[CMD+p] to quickly open the `PaymentResource.java` and update the _COMPLETED_ message in the `pass` function:
++
+image:payment-completed-log.png[]
++
+. Next, build a native image (locally).
+** If you would like to build the image using S2I, you'll need to first checkin the changes and see <<,these instructions>>
++
+----
+cd payment-service
+export MAVEN_OPTS=" -Xmx1024M -Xss128M -XX:MetaspaceSize=512M -XX:MaxMetaspaceSize=1024M -XX:+CMSClassUnloadingEnabled"
+mvn clean package -Pnative -DskipTests
+----
++
+. Next, add a build to our project that will allow us to create an image out of the binary we just compiled.
++
+----
+oc new-build quay.io/quarkus/ubi-quarkus-native-binary-s2i:19.2.0 --binary --name=payment-native
+----
++
+Next, start the (binary) build of the image using our new configuration
++
+----
+oc start-build payment-native --from-file $DEMO_HOME/payment-service/target/*-runner --follow
+----
++
+. When finished, then tag this latest build as a `payment:quarkus-native` build
++
+----
+oc tag payment-native:latest payment:quarkus-native
+----
++
+. Next, update our payment knative service to use the quarkus-native image we just created (keeping concurrency limits the same)
+** NOTE: if you don't want to write out the location to the image registry, you can use this embedded oc command after the `--image` switch
++
+----
+oc get istag/payment:quarkus-native -o jsonpath='{.image.dockerImageReference}'
+----
++
+----
+kn service update payment --image $(oc get is/payment -o jsonpath='{.status.dockerImageRepository}'):quarkus-native --revision-name "{{.Service}}-{{.Generation}}"
+----
+. Show revisions in developer console
++
+image:knative-revisions.png[]
++
+. Run the following `hey` command to show the payment service running under load
+** NOTE: information on the `hey` command can be found link:https://github.com/rakyll/hey[here]
++
+----
+hey -n 100 -c 100 -m POST -D $DEMO_HOME/example/order-payload.json -T "application/json" $(oc get rt payment -o jsonpath='{.status.url}')
+----
++
+. Navigate to the Topology view while the command is running:
+** Notice number of containers that are spun up, this should be <NUM_REQUESTS>/<MAX_CONCURRENCY>
+. When the `hey` command report comes back:
+** Notice the timings
++
+image:hey-example-timings-quarkus.png[Example timings with quarkus native]
++
+. Update the traffic in the _Topology View_ back to the initial revision as per the instructions in the screenshot
++
+image:knative-update-traffic-distrubtion.png[]
++
+. Run `hey` again
+. Switch back to the _Topology View_ and notice that revision 1 is getting the traffic
++
+image:knative-back-to-initial-revision.png[]
++
+. Look back at the `hey` results
+** Notice that the timings are now back in line with the initial revision

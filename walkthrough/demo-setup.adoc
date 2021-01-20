@@ -66,3 +66,8 @@ $DEMO_HOME/scripts/uninstall.sh -f -p $PROJECT_PREFIX
 
 == Appendix ==
 
+=== Creating new images of "coolstore" demo services
+
+The source code for the services used in this demo can be found in the `coolstore` submodule.
+
+For easily creating new `payment-service` images (using quarkus container and jib) for use in the demo (such as seen in link:https://quay.io/repository/mhildenb/homemade-serverless-java[this registry] and link:https://quay.io/repository/mhildenb/homemade-serverless-native[this registry]) see the link:../scripts/create-payment-service.sh[create-payment-service.sh] script.
