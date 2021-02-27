@@ -20,7 +20,7 @@
 		"-v", "${env:HOME}/.ssh:/home/jboss/.ssh",
 
 		// Ensure that the m2 cache persists
-		"-v", "${localWorkspaceFolder}/.m2/:/home/jboss/.m2",
+		"-v", "${env:HOME}/.m2/:/home/jboss/.m2",
 
 		// Used for AWS based clusters
 		"-e", "AWS_PROFILE=redhat",
