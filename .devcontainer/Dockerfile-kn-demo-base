@@ -3,7 +3,7 @@
 # NOTE because of the special command line flags (e.g --secret) that need to be passed
 # to the docker build process, we are not able to put these commands in the dockerfile 
 # for the devcontainer
-FROM quay.io/mhildenb/dev-demo-base:1.4
+FROM quay.io/mhildenb/dev-demo-base:1.5
 
 USER root
 
