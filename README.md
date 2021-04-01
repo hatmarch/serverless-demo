@@ -1,13 +1,21 @@
 # Serverless (knative) Demo
 ===
+
+## Walkthrough instructions
+
+For demo walkthrough steps see [this setup guide](walkthrough/demo-setup.adoc) and [this walkthrough](walkthrough/demo-walkthrough.adoc)
 ## Concepts covered
 
-1. OpenShift Serverless (1.0 Tech Preview)
-2. OpenShift 4.2 Developer Perspective
-3. Knative Eventing
-4. Knative Kafka Eventing
-5. (AMQStreams)
-6. Quarkus
+1. OpenShift Serverless (Serving and Eventing)
+2. OpenShift 4.6 Developer Perspective
+3. Knative Kafka Eventing
+4. OpenShift Serverless Functions (Tech preview)
+
+Some other topics touched upon include:
+
+1. CodeReady Workspaces
+2. Quarkus
+3. OpenShift Pipelines (Tekton)
 
 ## About the demonstration application
 
@@ -19,10 +27,6 @@ Some information about the demo services therein:
 * Order service  - Quarkus application service running on OpenJDK or native for writing and displaying reviews for products
 * User Service - Vert.x service running on JDK for managing users
 * Payment Service  - A Quarkus based FaaS with Knative
-
-## Walkthrough instructions
-
-For demo walkthrough steps see [this setup guide](walkthrough/demo-setup.adoc) and [this walkthrough](walkthrough/demo-walkthrough.adoc)
 
 ## Acknowledgements
 
