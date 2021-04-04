@@ -41,6 +41,7 @@
 	"settings":{
 		// NOTE: podman does not work to build this devcontainer
 		"remote.containers.dockerPath": "",
+		"terminal.integrated.shell.linux": "/bin/zsh",
 		"java.home": "/usr/lib/jvm/java-11",
 		"http.proxyStrictSSL": false,
 		"workbench.tips.enabled": false,
